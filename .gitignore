@@ -1,0 +1,23 @@
+# packaged app (build it with build.bat; ship via Releases, not git)
+app/
+build_dist/
+build_tmp/
+build/
+dist/
+*.spec
+
+# python
+__pycache__/
+*.pyc
+.venv/
+venv/
+
+# runtime data (machine-specific; do not commit)
+cun.log
+cun_ocr_cache.json
+cun_config.local.json
+
+# os
+Thumbs.db
+desktop.ini
+.DS_Store
