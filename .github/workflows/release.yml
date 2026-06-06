@@ -39,7 +39,7 @@ jobs:
 
       - name: Publish (win-x64, self-contained)
         run: >-
-          dotnet publish winui3/CunSorter/CunSorter.csproj
+          dotnet publish CunSorter/CunSorter.csproj
           -c Release -r win-x64 --self-contained
           -p:Platform=x64 -p:WindowsAppSDKSelfContained=true
           -o publish_out
@@ -76,5 +76,5 @@ jobs:
             - 截图分辨率 1920×1080
             - 需安装 Tesseract OCR（程序自动使用其 `tessdata`）
 
-            本版为自包含构建，**无需安装 .NET 运行时**。详见 [winui3/README](https://github.com/Eric6286/chunithm-cun-sorter/blob/main/winui3/README.md)。
+            本版为自包含构建，**无需安装 .NET 运行时**。详见仓库 [README](https://github.com/Eric6286/chunithm-cun-sorter#readme)。
           files: ${{ steps.pack.outputs.zip }}
