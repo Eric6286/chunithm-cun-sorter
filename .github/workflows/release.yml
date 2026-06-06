@@ -1,0 +1,80 @@
+name: Release
+
+# Tag-triggered release: on pushing a v* tag, build the WinUI 3 app on a Windows
+# runner (self-contained win-x64, no .NET install needed), package it as the
+# deployable `cun/` folder, and publish a GitHub Release with the zip attached.
+
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Tag name to build (e.g. v1.1)"
+        required: true
+        default: "v1.1"
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup .NET 8
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "8.0.x"
+
+      - name: Resolve version
+        id: ver
+        shell: pwsh
+        run: |
+          $tag = if ("${{ github.ref_type }}" -eq "tag") { "${{ github.ref_name }}" } else { "${{ github.event.inputs.tag }}" }
+          "tag=$tag" | Out-File -FilePath $env:GITHUB_OUTPUT -Append
+
+      - name: Publish (win-x64, self-contained)
+        run: >-
+          dotnet publish winui3/CunSorter/CunSorter.csproj
+          -c Release -r win-x64 --self-contained
+          -p:Platform=x64 -p:WindowsAppSDKSelfContained=true
+          -o publish_out
+
+      - name: Package cun/ folder
+        id: pack
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force -Path dist/cun/app | Out-Null
+          Copy-Item publish_out/* dist/cun/app -Recurse -Force
+          # Ship a seed config at the cun/ level (data_dir reads exe's parent).
+          Copy-Item cun_config.json dist/cun/cun_config.json -Force
+          $zip = "chunithm-cun-sorter_${{ steps.ver.outputs.tag }}_win64.zip"
+          Compress-Archive -Path dist/cun -DestinationPath $zip -Force
+          "zip=$zip" | Out-File -FilePath $env:GITHUB_OUTPUT -Append
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.ver.outputs.tag }}
+          name: 今天你寸了吗 ${{ steps.ver.outputs.tag }}
+          body: |
+            ## 今天你寸了吗 ${{ steps.ver.outputs.tag }} · WinUI 3 / .NET 8
+
+            CHUNITHM「寸」成绩自动识别与归档工具。本版为 **WinUI 3 + .NET 8** 重写版（Fluent 2 + Win11 Mica），与 Python 版功能等价、配置 / 缓存（`cun_config.json` / `cun_ocr_cache.json`）互通。
+
+            ### 下载即用（免装 .NET / Python）
+            1. 安装 **Tesseract OCR**：<https://github.com/UB-Mannheim/tesseract/wiki>
+            2. 下载下方 **`chunithm-cun-sorter_${{ steps.ver.outputs.tag }}_win64.zip`**，解压得到 `cun` 文件夹，放到 **`<CHUNITHM>\bin\`**（与 `screenshots` 同级，最终为 `<CHUNITHM>\bin\cun\`）。
+            3. 双击 **`app\今天你寸了吗.exe`** 运行。游戏照常用 `start.bat` 启动；让程序常驻即可自动归档。
+
+            ### 环境
+            - Windows 10 1809+ / 11，x64
+            - 截图分辨率 1920×1080
+            - 需安装 Tesseract OCR（程序自动使用其 `tessdata`）
+
+            本版为自包含构建，**无需安装 .NET 运行时**。详见 [winui3/README](https://github.com/Eric6286/chunithm-cun-sorter/blob/main/winui3/README.md)。
+          files: ${{ steps.pack.outputs.zip }}
