@@ -19,6 +19,8 @@
 
 > 全程**只复制，绝不修改或删除原始截图**。低占用：识别发生在结算画面、以最低 CPU 优先级运行，不影响游戏帧数。
 
+> 🆕 **WinUI 3 / .NET 8 移植版**已在 [`winui3/`](winui3/) 目录提供，功能与配置文件（`cun_config.json` / `cun_ocr_cache.json`）与本 Python 版完全互通，构建说明见 [winui3/README.md](winui3/README.md)。
+
 ## ✨ 功能特性
 
 - 🎯 多种可自定义的归类规则：**AJ**、**FC**、**AJ寸**、按得分的 **SSS+ / SSS / SS+ / SS 寸**、按 **ATTACK/MISS** 的「寸」

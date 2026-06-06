@@ -1,0 +1,83 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Page
+    x:Class="CunSorter.Pages.StatsPage"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+
+    <Page.Resources>
+        <Style x:Key="StatCard" TargetType="Border">
+            <Setter Property="Background" Value="{ThemeResource CardBackgroundFillColorDefaultBrush}" />
+            <Setter Property="BorderBrush" Value="{ThemeResource CardStrokeColorDefaultBrush}" />
+            <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="CornerRadius" Value="8" />
+            <Setter Property="Padding" Value="20,16,20,16" />
+        </Style>
+    </Page.Resources>
+
+    <Grid Padding="28,18,28,18" RowSpacing="14">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+        </Grid.RowDefinitions>
+
+        <!-- header -->
+        <Grid Grid.Row="0">
+            <StackPanel Spacing="2" VerticalAlignment="Center">
+                <TextBlock Text="每日「寸」统计" Style="{ThemeResource TitleTextBlockStyle}" />
+                <TextBlock x:Name="RangeLabel" Text="—"
+                           Style="{ThemeResource CaptionTextBlockStyle}"
+                           Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+            </StackPanel>
+            <Button HorizontalAlignment="Right" VerticalAlignment="Center" Click="Refresh_Click">
+                <StackPanel Orientation="Horizontal" Spacing="8">
+                    <SymbolIcon Symbol="Sync" />
+                    <TextBlock Text="刷新" />
+                </StackPanel>
+            </Button>
+        </Grid>
+
+        <!-- stat cards -->
+        <Grid Grid.Row="1" ColumnSpacing="14">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="*" />
+            </Grid.ColumnDefinitions>
+            <Border Grid.Column="0" Style="{StaticResource StatCard}">
+                <StackPanel>
+                    <TextBlock x:Name="ValToday" Text="0" Style="{ThemeResource TitleLargeTextBlockStyle}" />
+                    <TextBlock x:Name="CapToday" Text="今天" Style="{ThemeResource CaptionTextBlockStyle}"
+                               Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+                </StackPanel>
+            </Border>
+            <Border Grid.Column="1" Style="{StaticResource StatCard}">
+                <StackPanel>
+                    <TextBlock x:Name="ValWeek" Text="0" Style="{ThemeResource TitleLargeTextBlockStyle}" />
+                    <TextBlock x:Name="CapWeek" Text="近 7 天" Style="{ThemeResource CaptionTextBlockStyle}"
+                               Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+                </StackPanel>
+            </Border>
+            <Border Grid.Column="2" Style="{StaticResource StatCard}">
+                <StackPanel>
+                    <TextBlock x:Name="ValTotal" Text="0" Style="{ThemeResource TitleLargeTextBlockStyle}" />
+                    <TextBlock x:Name="CapTotal" Text="累计" Style="{ThemeResource CaptionTextBlockStyle}"
+                               Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+                </StackPanel>
+            </Border>
+            <Border Grid.Column="3" Style="{StaticResource StatCard}">
+                <StackPanel>
+                    <TextBlock x:Name="ValBest" Text="0" Style="{ThemeResource TitleLargeTextBlockStyle}" />
+                    <TextBlock x:Name="CapBest" Text="最高一天" Style="{ThemeResource CaptionTextBlockStyle}"
+                               Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+                </StackPanel>
+            </Border>
+        </Grid>
+
+        <!-- chart -->
+        <Border Grid.Row="2" Style="{StaticResource StatCard}" MinHeight="380">
+            <Canvas x:Name="ChartCanvas" SizeChanged="Chart_SizeChanged" />
+        </Border>
+    </Grid>
+</Page>
