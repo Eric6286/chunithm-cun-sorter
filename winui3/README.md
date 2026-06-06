@@ -69,6 +69,14 @@ dotnet publish CunSorter -c Release -r win-x64 --self-contained `
 把整个 `publish` 文件夹放到 **`<CHUNITHM>\bin\cun\app`**（与原版同样的部署方式）即可，
 程序会自动在上级目录找到 `screenshots` 与 `cun_config.json`。
 
+> **数据目录定位（务必按部署方式来）**：`NativeUtil.DataDir()` 与 Python 的
+> `data_dir()` 一致 —— 先看 **exe 同级**有没有 `cun_config.json`，没有再看**上一级**。
+> 所以正式用法是把 publish 放进 `bin\cun\app\`，让程序在上级 `bin\cun\` 找到配置与缓存。
+>
+> 如果你只是 `dotnet run` 或直接在 `bin\<...>\publish\` 原地启动、而**上级目录没有
+> `cun_config.json`**，程序会**回退到默认配置**（screenshots/output 指向默认推断路径）。
+> 想原地测试，最简单的办法是把一份 `cun_config.json` 复制到 **exe 同级目录**即可。
+
 ## 📁 目录结构
 
 ```
