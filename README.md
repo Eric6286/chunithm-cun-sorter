@@ -5,7 +5,7 @@
 # 今天你寸了吗
 
 **CHUNITHM「寸」成绩自动识别与归档工具**
-*Auto-detect & sort your near-miss CHUNITHM results — with a Fluent 2 / Mica GUI.*
+*Auto-detect & sort your near-miss CHUNITHM results — WinUI 3 / Fluent 2 / Mica.*
 
 </div>
 
@@ -13,18 +13,13 @@
 
 本工具用 OCR 读取结算画面的 **得分 / ATTACK / MISS**，
 把「寸」以及 **AJ / FC** 成绩**自动分类复制**到独立文件夹，
-并提供一个 **Fluent 2 + Mica** 风格的图形界面来自定义规则、查看每日「寸」曲线。
+并提供一个 **Fluent 2 + Win11 Mica** 风格的图形界面来自定义规则、查看每日「寸」曲线。
 
 搭配幻台使用风味更佳哦~
 
 > 全程**只复制，绝不修改或删除原始截图**。低占用：识别发生在结算画面、以最低 CPU 优先级运行，不影响游戏帧数。
 
-### 📦 两种实现，任选其一
-
-- **WinUI 3 / .NET 8 版**（推荐，最新 [**Release v1.1**](https://github.com/Eric6286/chunithm-cun-sorter/releases/latest)）：用原生 Windows App SDK 重写，**自包含、免装 .NET 与 Python**，代码在 [`winui3/`](winui3/)（构建说明见 [winui3/README.md](winui3/README.md)）。
-- **Python 源码版**：仓库根目录的 `cun_*.py`（PySide6 + qfluentwidgets），适合改代码 / 自行打包；对应 [Release v1.0](https://github.com/Eric6286/chunithm-cun-sorter/releases/tag/v1.0)。
-
-两版**功能等价**，且共用同一套 `cun_config.json` / `cun_ocr_cache.json`，可随时互换。下文的规则、配置、工作原理对两版均适用。
+> 本项目使用 **WinUI 3 + .NET 8**（Windows App SDK）开发。最新版本：[**Release v1.1**](https://github.com/Eric6286/chunithm-cun-sorter/releases/latest)（自包含构建，**免装 .NET 运行时**）。
 
 ## ✨ 功能特性
 
@@ -35,40 +30,42 @@
 - 🐢 低占用：结算画面才识别、IDLE 优先级、OCR 结果缓存；可选「关游戏后再处理」模式
 - 🎮 通过**轮询进程**检测游戏启停，**无需改动 `start.bat`**
 - 🔔 系统托盘常驻、可开机自启
-- 📦 可打包为独立 `.exe`（运行不需要 Python）
+- 📦 自包含发布，运行**不需要安装 .NET 或 Python**
 
 ## 🧩 运行要求
 
-- **Windows 10 / 11**
+- **Windows 10 1809+ / 11**，x64
 - **Tesseract OCR**（OCR 引擎，必需）：<https://github.com/UB-Mannheim/tesseract/wiki>
-  装到默认路径 `C:\Program Files\Tesseract-OCR\` 或加入 PATH 即可；否则在 `cun_config.json` 里改 `tesseract_cmd`。
+  装到默认路径 `C:\Program Files\Tesseract-OCR\` 即可（程序会自动使用其 `tessdata`）；
+  或把含 `eng.traineddata` 的 `tessdata` 文件夹放到 exe 同级目录；也可在 `cun_config.json` 里改 `tesseract_cmd`。
 - 截图分辨率 **1920×1080**（其它分辨率会按比例自动缩放识别区域，但 1080p 最稳）
-- 下载 **Release v1.1（WinUI 3）自包含包无需任何运行时**；从源码运行时：Python 3.10+（Python 版）或 .NET 8 SDK（WinUI 3 版）
+- *（仅从源码构建时）* **.NET 8 SDK**
 
 ## 🚀 快速开始
 
 ### 方式一：下载 Release（推荐，免装 .NET / Python）
-> 最新 **v1.1** 为 WinUI 3 自包含构建（`chunithm-cun-sorter_v1.1_win64.zip`）；若想要旧的 Python 打包版可下 v1.0。两者部署方式相同。
-
 1. 安装 **Tesseract OCR**（见上）。
-2. 下载 Release 压缩包，解压得到 `cun` 文件夹，放到你的 **`<CHUNITHM>\bin\`** 里（即与 `screenshots` 同级，最终为 `<CHUNITHM>\bin\cun\`）。
+2. 下载最新 **`chunithm-cun-sorter_v1.1_win64.zip`**，解压得到 `cun` 文件夹，放到你的 **`<CHUNITHM>\bin\`** 里（即与 `screenshots` 同级，最终为 `<CHUNITHM>\bin\cun\`）。
 3. 双击 **`app\今天你寸了吗.exe`** 启动（可右键「发送到 → 桌面快捷方式」方便以后打开）。
 4. 游戏照常用 `start.bat` 启动；让本程序常驻即可自动归档。点「应用并重新扫描」可整理历史截图。
 
 > 若你的截图目录不在 `<CHUNITHM>\bin\screenshots`，打开 `cun_config.json` 把 `screenshots_dir` 改成你的路径即可。
 
-### 方式二：从源码运行
-```bat
-pip install -r requirements.txt
-python cun_gui.py
+### 方式二：从源码构建运行
+```powershell
+dotnet restore
+dotnet build -c Release
+dotnet run --project CunSorter -c Release
 ```
 
-### 自行打包 exe
-```bat
-pip install -r requirements.txt pyinstaller
-build.bat
+### 打包为独立文件夹（免装 .NET 运行时）
+```powershell
+dotnet publish CunSorter/CunSorter.csproj -c Release -r win-x64 --self-contained `
+  -p:Platform=x64 -p:WindowsAppSDKSelfContained=true -o publish_out
 ```
-产物在 `app\今天你寸了吗.exe`。
+把 `publish_out` 的内容放进 **`<CHUNITHM>\bin\cun\app\`**，并在其上级 `cun\` 放一份 `cun_config.json` 即可。
+
+> **发版**：仓库带有 `release.yml`，**推送一个 `v*` tag**（如 `git tag v1.2 && git push origin v1.2`）就会在 Windows runner 上自动构建自包含包并发布 GitHub Release。
 
 ## 🖥️ 界面说明（三页）
 
@@ -78,7 +75,7 @@ build.bat
   - `打开输出文件夹`
 - **统计**：每日「寸」数量曲线（另含 AJ 线）+ 今天 / 近 7 天 / 累计 / 最高一天。
 - **运行**：切换 `realtime` / `on_close` 模式、启停监视、显示游戏状态、最近命中、开机自启。
-  关闭窗口会**最小化到托盘**继续后台监视。
+  监视运行时关闭窗口会**最小化到托盘**继续后台监视（右键托盘可显示主界面或退出）。
 
 ## 🏷️ 归类规则与默认值
 
@@ -103,7 +100,7 @@ build.bat
 |---|---|
 | `screenshots_dir` | 监视的截图目录（留空则自动取 `<安装目录的上级>\screenshots`） |
 | `output_root` | 输出根目录（留空则同 `screenshots_dir`） |
-| `tesseract_cmd` | Tesseract 路径（留空 / 找不到时回退到 PATH） |
+| `tesseract_cmd` | Tesseract 路径（用于定位 `tessdata`；留空 / 找不到时回退到 PATH） |
 | `process_mode` | `realtime`（实时·低优先级）或 `on_close`（关游戏后处理） |
 | `game_process` | 检测用进程名（默认 `chusanApp.exe`） |
 | `rename_with_stats` | 复制时在文件名追加成绩与类别 |
@@ -111,40 +108,45 @@ build.bat
 | `categories[]` | 规则列表：`enabled / kind / folder` + 各自参数 |
 | `boxes` / `dark_threshold` / `bright_threshold` | OCR 区域与阈值（基于 1920×1080） |
 
+> **数据目录定位**：程序先看 **exe 同级**有没有 `cun_config.json`，没有再看**上一级**——所以正式部署把 exe 放在 `bin\cun\app\`、配置放 `bin\cun\` 即可自动找到。若直接 `dotnet run` 且上级没有配置，会回退到默认值（想原地测试就把一份 `cun_config.json` 放到 exe 同级）。
+
 ## 🔬 工作原理
 
-读取结算画面**顶部状态栏**的清晰字体：隔离白字的深色描边 → 识别 `SCORE / ATTACK / MISS`，
+读取结算画面**顶部状态栏**的清晰字体：隔离白字的深色描边 → 用 Tesseract 识别 `SCORE / ATTACK / MISS`，
 由得分换算评级（顶栏在某项为 0 时会隐藏该项，据此判 0）。大号彩虹分数/评级因字体花哨**不**直接 OCR。
 OCR 结果缓存在 `cun_ocr_cache.json`，改区间后重新判定是**瞬间**完成的（无需重新识别）。
 
 ## 📁 目录结构
 
 ```
-cun/
-├─ app/今天你寸了吗.exe    # 主程序（双击运行；build.bat 生成，不入库走 Release）
-├─ scan_all.bat           # 历史截图批量整理（源码模式）
-├─ build.bat              # 打包 exe
-├─ cun_gui.py             # 图形界面（Fluent 2 + Mica + 曲线图）
-├─ cun_core.py            # 分类 / 复制 / 扫描 / 缓存 / 监视 / 进程检测
-├─ cun_detect.py          # 结算画面 OCR
-├─ cun_watcher.py         # 无界面常驻监视器（可选）
-├─ scan_all.py            # 批量整理脚本
-├─ cun_config.json        # 配置（界面读写）
-├─ icon.ico / 奶奶蛙.png   # 应用图标 / 图标源图
-├─ requirements.txt
+.
+├─ CunSorter.sln
+├─ CunSorter/
+│  ├─ CunSorter.csproj
+│  ├─ App.xaml(.cs) / MainWindow.xaml(.cs)
+│  ├─ Models/        # CunConfig / Category / OcrResult
+│  ├─ Services/      # OCR / 配置 / 分类·扫描 / 监视 / 自启 / 原生工具
+│  ├─ Pages/         # 配置 / 统计 / 运行 三页
+│  └─ Assets/        # icon.ico / 奶奶蛙.png
+├─ cun_config.json   # 配置（界面读写；发版时随包附带）
+├─ 奶奶蛙.png         # 图标源图
+├─ .github/workflows/ # build.yml（编译 CI）/ release.yml（tag 触发发版）
 └─ LICENSE
 ```
 
+各 `Services` 模块职责：`OcrService`（结算画面 OCR）、`ConfigService`（配置读写 / 路径解析 / 评级）、
+`ClassifierService`（分类 / 复制 / 扫描 / 缓存 / 每日统计）、`WatcherService`（游戏感知后台监视）、
+`AutostartService`（开机自启）、`NativeUtil`（进程检测 / IDLE 优先级 / 数据目录）。
+
 ## ❓ FAQ
 
-- **识别不到 / 全是空？** 确认是 1920×1080 截图、装了 Tesseract，且 `screenshots_dir` 指向正确目录。
-- **任务栏显示成 “Python”？** 用打包后的 `app\今天你寸了吗.exe` 运行即可（已设图标与应用 ID）。
+- **识别不到 / 全是空？** 确认是 1920×1080 截图、装了 Tesseract（且能找到 `eng.traineddata`），且 `screenshots_dir` 指向正确目录。
+- **提示找不到 OCR 引擎？** 装一下 Tesseract OCR，或把含 `eng.traineddata` 的 `tessdata` 放到 exe 同级 / 配好 `tesseract_cmd`。
 - **会不会掉帧？** 识别只在结算画面、IDLE 优先级；或把 `process_mode` 设为 `on_close`，游戏中零识别。
 
 ## 🙏 致谢
 
-- Python 版：[PySide6](https://doc.qt.io/qtforpython/) · [PySide6-Fluent-Widgets (qfluentwidgets)](https://qfluentwidgets.com/)
-- WinUI 3 版：[Windows App SDK / WinUI 3](https://learn.microsoft.com/windows/apps/winui/winui3/) · [H.NotifyIcon](https://github.com/HavenDV/H.NotifyIcon) · [Tesseract .NET](https://github.com/charlesw/tesseract)
+- [Windows App SDK / WinUI 3](https://learn.microsoft.com/windows/apps/winui/winui3/) · [H.NotifyIcon](https://github.com/HavenDV/H.NotifyIcon) · [Tesseract .NET](https://github.com/charlesw/tesseract)
 - OCR 引擎：[Tesseract OCR](https://github.com/tesseract-ocr/tesseract)
 
 ## 📄 许可

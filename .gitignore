@@ -1,16 +1,23 @@
-# packaged app (build it with build.bat; ship via Releases, not git)
-app/
-build_dist/
-build_tmp/
-build/
+# .NET / WinUI 3 build output
+[Bb]in/
+[Oo]bj/
+[Dd]ebug/
+[Rr]elease/
+*.user
+publish_out/
 dist/
-*.spec
 
-# python
-__pycache__/
-*.pyc
-.venv/
-venv/
+# Rider / VS
+.vs/
+.idea/
+
+# Publish / packaging
+[Pp]ublish/
+AppPackages/
+BundleArtifacts/
+*.appx
+*.msix
+*.appxbundle
 
 # runtime data (machine-specific; do not commit)
 cun.log
