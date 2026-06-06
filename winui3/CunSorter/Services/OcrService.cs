@@ -116,7 +116,7 @@ public sealed class OcrService : IDisposable
         {
             engine.SetVariable("tessedit_char_whitelist", whitelist ?? "");
             using var ms = new MemoryStream();
-            bmp.Save(ms, ImageFormat.Png);
+            bmp.Save(ms, System.Drawing.Imaging.ImageFormat.Png);
             using var pix = Pix.LoadFromMemory(ms.ToArray());
             using var page = engine.Process(pix, psm);
             return (page.GetText() ?? "").Trim();
