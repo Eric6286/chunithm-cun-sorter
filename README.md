@@ -19,7 +19,12 @@
 
 > 全程**只复制，绝不修改或删除原始截图**。低占用：识别发生在结算画面、以最低 CPU 优先级运行，不影响游戏帧数。
 
-> 🆕 **WinUI 3 / .NET 8 移植版**已在 [`winui3/`](winui3/) 目录提供，功能与配置文件（`cun_config.json` / `cun_ocr_cache.json`）与本 Python 版完全互通，构建说明见 [winui3/README.md](winui3/README.md)。
+### 📦 两种实现，任选其一
+
+- **WinUI 3 / .NET 8 版**（推荐，最新 [**Release v1.1**](https://github.com/Eric6286/chunithm-cun-sorter/releases/latest)）：用原生 Windows App SDK 重写，**自包含、免装 .NET 与 Python**，代码在 [`winui3/`](winui3/)（构建说明见 [winui3/README.md](winui3/README.md)）。
+- **Python 源码版**：仓库根目录的 `cun_*.py`（PySide6 + qfluentwidgets），适合改代码 / 自行打包；对应 [Release v1.0](https://github.com/Eric6286/chunithm-cun-sorter/releases/tag/v1.0)。
+
+两版**功能等价**，且共用同一套 `cun_config.json` / `cun_ocr_cache.json`，可随时互换。下文的规则、配置、工作原理对两版均适用。
 
 ## ✨ 功能特性
 
@@ -38,11 +43,13 @@
 - **Tesseract OCR**（OCR 引擎，必需）：<https://github.com/UB-Mannheim/tesseract/wiki>
   装到默认路径 `C:\Program Files\Tesseract-OCR\` 或加入 PATH 即可；否则在 `cun_config.json` 里改 `tesseract_cmd`。
 - 截图分辨率 **1920×1080**（其它分辨率会按比例自动缩放识别区域，但 1080p 最稳）
-- *（从源码运行时）* Python 3.10+
+- 下载 **Release v1.1（WinUI 3）自包含包无需任何运行时**；从源码运行时：Python 3.10+（Python 版）或 .NET 8 SDK（WinUI 3 版）
 
 ## 🚀 快速开始
 
-### 方式一：下载 Release（推荐，免装 Python）
+### 方式一：下载 Release（推荐，免装 .NET / Python）
+> 最新 **v1.1** 为 WinUI 3 自包含构建（`chunithm-cun-sorter_v1.1_win64.zip`）；若想要旧的 Python 打包版可下 v1.0。两者部署方式相同。
+
 1. 安装 **Tesseract OCR**（见上）。
 2. 下载 Release 压缩包，解压得到 `cun` 文件夹，放到你的 **`<CHUNITHM>\bin\`** 里（即与 `screenshots` 同级，最终为 `<CHUNITHM>\bin\cun\`）。
 3. 双击 **`app\今天你寸了吗.exe`** 启动（可右键「发送到 → 桌面快捷方式」方便以后打开）。
@@ -136,7 +143,9 @@ cun/
 
 ## 🙏 致谢
 
-- [PySide6](https://doc.qt.io/qtforpython/) · [PySide6-Fluent-Widgets (qfluentwidgets)](https://qfluentwidgets.com/) · [Tesseract OCR](https://github.com/tesseract-ocr/tesseract)
+- Python 版：[PySide6](https://doc.qt.io/qtforpython/) · [PySide6-Fluent-Widgets (qfluentwidgets)](https://qfluentwidgets.com/)
+- WinUI 3 版：[Windows App SDK / WinUI 3](https://learn.microsoft.com/windows/apps/winui/winui3/) · [H.NotifyIcon](https://github.com/HavenDV/H.NotifyIcon) · [Tesseract .NET](https://github.com/charlesw/tesseract)
+- OCR 引擎：[Tesseract OCR](https://github.com/tesseract-ocr/tesseract)
 
 ## 📄 许可
 
