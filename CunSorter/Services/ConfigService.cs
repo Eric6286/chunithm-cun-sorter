@@ -25,21 +25,13 @@ public static class ConfigService
         Encoder = JavaScriptEncoder.UnsafeRelaxedJsonEscaping,
     };
 
-    /// <summary>Built-in defaults, matching the DEFAULTS dict in cun_detect.py.</summary>
-    private static CunConfig Defaults() => new()
-    {
-        Categories = new List<Category>
-        {
-            new() { Key = "AJ", Label = "AJ", Kind = "aj", Enabled = true, Folder = "AJ" },
-            new() { Key = "FC", Label = "FC", Kind = "fc", Enabled = true, Folder = "FC" },
-            new() { Key = "AJ寸", Label = "AJ 寸", Kind = "ajcun", Enabled = true, Folder = "寸/AJ寸", MHi = 4 },
-            new() { Key = "SSS+寸", Label = "SSS+ 寸", Kind = "score", Enabled = true, Folder = "寸/SSS+寸", Lo = 1008600, Hi = 1008999 },
-            new() { Key = "SSS寸", Label = "SSS 寸", Kind = "score", Enabled = true, Folder = "寸/SSS寸", Lo = 1007000, Hi = 1007499 },
-            new() { Key = "SS+寸", Label = "SS+ 寸", Kind = "score", Enabled = true, Folder = "寸/SS+寸", Lo = 1004500, Hi = 1004999 },
-            new() { Key = "SS寸", Label = "SS 寸", Kind = "score", Enabled = true, Folder = "寸/SS寸", Lo = 999500, Hi = 999999 },
-            new() { Key = "AM寸", Label = "ATTACK+MISS", Kind = "am", Enabled = true, Folder = "寸/AM寸", AHi = 4, MHi = 4, MinRank = "SSS" },
-        }
-    };
+    /// <summary>
+    /// Built-in defaults. Judgment rules now start empty — the user builds them in
+    /// the 自定义判定 list (the former preset rules are offered as options in the
+    /// add dialog). Rank thresholds / OCR boxes / organize steps come from the
+    /// <see cref="CunConfig"/> property initializers.
+    /// </summary>
+    private static CunConfig Defaults() => new();
 
     public static CunConfig Load(string? path = null)
     {
@@ -52,10 +44,8 @@ public static class ConfigService
                 var user = JsonSerializer.Deserialize<CunConfig>(File.ReadAllText(path));
                 if (user != null)
                 {
-                    // Mirror the Python key-by-key overlay: keep defaults for any
-                    // section the user file omits, and merge box entries rather
-                    // than replacing the whole dict.
-                    if (user.Categories.Count == 0) user.Categories = cfg.Categories;
+                    // Keep defaults for any section the user file omits, and merge
+                    // box entries rather than replacing the whole dict.
                     if (user.RankThresholds.Count == 0) user.RankThresholds = cfg.RankThresholds;
                     foreach (var (k, v) in cfg.Boxes)
                         user.Boxes.TryAdd(k, v);
@@ -67,6 +57,11 @@ public static class ConfigService
                 Console.Error.WriteLine($"config load failed ({e.Message}); using defaults");
             }
         }
+
+        // Only user-defined rules survive; legacy built-in presets are dropped so
+        // the judgment list starts clean (they're re-creatable from the add dialog).
+        cfg.Categories = cfg.Categories.Where(c => c.Custom).ToList();
+        EnsureOrganizeSteps(cfg);
 
         // Portable path resolution: drop the app folder into <CHUNITHM>\bin and it
         // finds <CHUNITHM>\bin\screenshots automatically.
@@ -105,6 +100,24 @@ public static class ConfigService
     /// <summary>Ranks sorted high → low, for the config-page combo box.</summary>
     public static List<string> Ranks(CunConfig cfg) =>
         cfg.RankThresholds.OrderByDescending(kv => kv.Value).Select(kv => kv.Key).ToList();
+
+    /// <summary>The three organize dimensions in canonical order, used when a
+    /// config omits one.</summary>
+    private static readonly string[] OrganizeKinds = { "date", "rank", "achievement" };
+
+    /// <summary>Keep the user's ordering but guarantee all three organize steps
+    /// exist exactly once and drop any unknown kind.</summary>
+    private static void EnsureOrganizeSteps(CunConfig cfg)
+    {
+        cfg.Organize ??= new OrganizeConfig();
+        var steps = cfg.Organize.Steps
+            .Where(s => OrganizeKinds.Contains(s.Kind))
+            .GroupBy(s => s.Kind).Select(g => g.First()).ToList();
+        foreach (var kind in OrganizeKinds)
+            if (!steps.Any(s => s.Kind == kind))
+                steps.Add(new OrganizeStep { Kind = kind });
+        cfg.Organize.Steps = steps;
+    }
 
     private static string? WhichTesseract()
     {

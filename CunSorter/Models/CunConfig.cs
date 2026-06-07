@@ -43,6 +43,33 @@ public class CunConfig
 
     [JsonPropertyName("categories")]
     public List<Category> Categories { get; set; } = new();
+
+    [JsonPropertyName("organize")]
+    public OrganizeConfig Organize { get; set; } = new();
+}
+
+/// <summary>
+/// "Organize all screenshots" settings. Each enabled step contributes one nested
+/// folder level; <see cref="Steps"/> order is the nesting order (first = outermost).
+/// When any step is enabled, originals are MOVED into the resulting folder tree.
+/// </summary>
+public class OrganizeConfig
+{
+    [JsonPropertyName("steps")]
+    public List<OrganizeStep> Steps { get; set; } = new()
+    {
+        new() { Kind = "date", DateSpan = "month" },
+        new() { Kind = "rank" },
+        new() { Kind = "achievement" },
+    };
+}
+
+/// <summary>One organize dimension: by date, by rank, or by achievement (AJ/FC).</summary>
+public class OrganizeStep
+{
+    [JsonPropertyName("kind")] public string Kind { get; set; } = "";        // date | rank | achievement
+    [JsonPropertyName("enabled")] public bool Enabled { get; set; }
+    [JsonPropertyName("date_span")] public string DateSpan { get; set; } = "month";   // year | month | day
 }
 
 /// <summary>One classification rule (a row in the GUI config page).</summary>
@@ -53,6 +80,10 @@ public class Category
     [JsonPropertyName("kind")] public string Kind { get; set; } = "";
     [JsonPropertyName("enabled")] public bool Enabled { get; set; }
     [JsonPropertyName("folder")] public string Folder { get; set; } = "";
+
+    // True for rules the user added in-app; built-in defaults omit it. Drives the
+    // default-vs-custom grouping on the config page.
+    [JsonPropertyName("custom")][JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)] public bool Custom { get; set; }
 
     // Optional, kind-specific bounds (null when not applicable → omitted on save).
     [JsonPropertyName("lo")][JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] public int? Lo { get; set; }

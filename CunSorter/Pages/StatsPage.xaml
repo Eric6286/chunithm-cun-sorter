@@ -46,30 +46,30 @@
                 <ColumnDefinition Width="*" />
             </Grid.ColumnDefinitions>
             <Border Grid.Column="0" Style="{StaticResource StatCard}">
-                <StackPanel>
-                    <TextBlock x:Name="ValToday" Text="0" Style="{ThemeResource TitleLargeTextBlockStyle}" />
-                    <TextBlock x:Name="CapToday" Text="今天" Style="{ThemeResource CaptionTextBlockStyle}"
+                <StackPanel Spacing="2">
+                    <TextBlock x:Name="ValToday" Text="0" FontSize="52" FontWeight="SemiBold" LineHeight="58" />
+                    <TextBlock x:Name="CapToday" Text="今天" Style="{ThemeResource BodyTextBlockStyle}"
                                Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
                 </StackPanel>
             </Border>
             <Border Grid.Column="1" Style="{StaticResource StatCard}">
-                <StackPanel>
-                    <TextBlock x:Name="ValWeek" Text="0" Style="{ThemeResource TitleLargeTextBlockStyle}" />
-                    <TextBlock x:Name="CapWeek" Text="近 7 天" Style="{ThemeResource CaptionTextBlockStyle}"
+                <StackPanel Spacing="2">
+                    <TextBlock x:Name="ValWeek" Text="0" FontSize="52" FontWeight="SemiBold" LineHeight="58" />
+                    <TextBlock x:Name="CapWeek" Text="近 7 天" Style="{ThemeResource BodyTextBlockStyle}"
                                Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
                 </StackPanel>
             </Border>
             <Border Grid.Column="2" Style="{StaticResource StatCard}">
-                <StackPanel>
-                    <TextBlock x:Name="ValTotal" Text="0" Style="{ThemeResource TitleLargeTextBlockStyle}" />
-                    <TextBlock x:Name="CapTotal" Text="累计" Style="{ThemeResource CaptionTextBlockStyle}"
+                <StackPanel Spacing="2">
+                    <TextBlock x:Name="ValTotal" Text="0" FontSize="52" FontWeight="SemiBold" LineHeight="58" />
+                    <TextBlock x:Name="CapTotal" Text="累计" Style="{ThemeResource BodyTextBlockStyle}"
                                Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
                 </StackPanel>
             </Border>
             <Border Grid.Column="3" Style="{StaticResource StatCard}">
-                <StackPanel>
-                    <TextBlock x:Name="ValBest" Text="0" Style="{ThemeResource TitleLargeTextBlockStyle}" />
-                    <TextBlock x:Name="CapBest" Text="最高一天" Style="{ThemeResource CaptionTextBlockStyle}"
+                <StackPanel Spacing="2">
+                    <TextBlock x:Name="ValBest" Text="0" FontSize="52" FontWeight="SemiBold" LineHeight="58" />
+                    <TextBlock x:Name="CapBest" Text="最高一天" Style="{ThemeResource BodyTextBlockStyle}"
                                Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
                 </StackPanel>
             </Border>

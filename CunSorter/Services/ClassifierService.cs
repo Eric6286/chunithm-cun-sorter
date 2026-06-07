@@ -182,39 +182,165 @@ public static class ClassifierService
         return removed;
     }
 
+    // ----------------------------- organize ----------------------------------
+    /// <summary>True if at least one organize dimension is switched on.</summary>
+    public static bool OrganizeEnabled(CunConfig cfg) => cfg.Organize.Steps.Any(s => s.Enabled);
+
+    /// <summary>Nested sub-path (e.g. "2026-05/SSS+/AJ") from the enabled organize
+    /// steps, in their configured order; empty when nothing is enabled.</summary>
+    private static string OrganizeRelPath(string filename, OcrCacheRecord rec, CunConfig cfg)
+    {
+        var parts = new List<string>();
+        foreach (var step in cfg.Organize.Steps)
+        {
+            if (!step.Enabled) continue;
+            var seg = step.Kind switch
+            {
+                "date" => DateSegment(filename, step.DateSpan),
+                "rank" => ConfigService.RankOf(rec.Score, cfg) ?? "未知评级",
+                "achievement" => AchievementSegment(rec),
+                _ => null,
+            };
+            if (!string.IsNullOrEmpty(seg)) parts.Add(seg);
+        }
+        return string.Join("/", parts);
+    }
+
+    private static string DateSegment(string filename, string span)
+    {
+        var m = DateRe.Match(filename);
+        if (!m.Success) return "未知日期";
+        var d = m.Groups[1].Value;                 // yyyy-MM-dd
+        return span switch { "year" => d[..4], "day" => d, _ => d[..7] };
+    }
+
+    private static string AchievementSegment(OcrCacheRecord rec)
+    {
+        if (rec.Attack is int a && rec.Miss is int m)
+        {
+            if (a == 0 && m == 0) return "AJ";     // All Justice
+            if (m == 0) return "FC";               // Full Combo
+        }
+        return "普通";
+    }
+
+    /// <summary>Move the original screenshot into its organize folder (creating it).
+    /// No-op if it is already there. Originals are moved, never deleted.</summary>
+    private static void MoveToOrganized(string path, OcrCacheRecord rec, CunConfig cfg)
+    {
+        var rel = OrganizeRelPath(Path.GetFileName(path), rec, cfg);
+        if (string.IsNullOrEmpty(rel)) return;
+        var destDir = Path.Combine(new[] { cfg.OutputRoot }.Concat(rel.Split('/')).ToArray());
+        var dest = Path.Combine(destDir, Path.GetFileName(path));
+        if (PathsEqual(dest, path)) return;
+        try
+        {
+            Directory.CreateDirectory(destDir);
+            File.Move(path, UniqueDest(dest));
+        }
+        catch (Exception e) { Log($"ERROR organize {Path.GetFileName(path)} -> {rel}: {e.Message}"); }
+    }
+
+    /// <summary>Originals (files without our "__" tag) under the screenshots dir and
+    /// output root, recursively — so already-organized files are re-evaluated when
+    /// the organize order changes.</summary>
+    private static List<string> ListOriginals(CunConfig cfg)
+    {
+        var roots = new List<string> { cfg.ScreenshotsDir };
+        if (!PathsEqual(cfg.OutputRoot, cfg.ScreenshotsDir)) roots.Add(cfg.OutputRoot);
+        var seen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        var result = new List<string>();
+        foreach (var root in roots)
+        {
+            if (!Directory.Exists(root)) continue;
+            IEnumerable<string> all;
+            try { all = Directory.EnumerateFiles(root, "*.png", SearchOption.AllDirectories); }
+            catch { continue; }
+            foreach (var f in all)
+            {
+                if (Path.GetFileName(f).Contains("__")) continue;   // our own 寸 copy
+                if (seen.Add(Path.GetFullPath(f))) result.Add(f);
+            }
+        }
+        return result;
+    }
+
+    private static bool PathsEqual(string a, string b)
+    {
+        try { return string.Equals(Path.GetFullPath(a), Path.GetFullPath(b), StringComparison.OrdinalIgnoreCase); }
+        catch { return false; }
+    }
+
+    private static string UniqueDest(string dest)
+    {
+        if (!File.Exists(dest)) return dest;
+        var dir = Path.GetDirectoryName(dest)!;
+        var b = Path.GetFileNameWithoutExtension(dest);
+        var ext = Path.GetExtension(dest);
+        for (int i = 1; ; i++)
+        {
+            var cand = Path.Combine(dir, $"{b} ({i}){ext}");
+            if (!File.Exists(cand)) return cand;
+        }
+    }
+
+    private static void PruneEmptyDirs(string root)
+    {
+        try
+        {
+            foreach (var dir in Directory.EnumerateDirectories(root, "*", SearchOption.AllDirectories)
+                         .OrderByDescending(d => d.Length))
+                try { if (!Directory.EnumerateFileSystemEntries(dir).Any()) Directory.Delete(dir); }
+                catch { /* in use / not empty */ }
+        }
+        catch { /* root gone */ }
+    }
+
     // ----------------------------- scan / stats ------------------------------
+    /// <summary>OCR + classify one screenshot: copy 寸 matches into 寸/ folders,
+    /// then (when organize is on) MOVE the original into the date/rank/achievement
+    /// tree. Shared by the full scan and the live watcher.</summary>
+    public static (OcrCacheRecord Rec, List<Category> Matches) ProcessFile(
+        string path, CunConfig cfg, Dictionary<string, OcrCacheRecord> cache, OcrService ocr, bool organize)
+    {
+        var rec = GetOcr(path, cfg, cache, ocr);
+        var matches = Classify(rec.Score, rec.Attack, rec.Miss, cfg);
+        if (matches.Count > 0) CopyMatches(path, rec, matches, cfg);   // 寸 copies first
+        if (organize) MoveToOrganized(path, rec, cfg);                 // then move the original
+        return (rec, matches);
+    }
+
     public static ScanResult ScanAll(CunConfig cfg, OcrService ocr,
         Action<int, int, int, int>? progress = null, bool rebuild = false, bool reocr = false)
     {
         var cache = reocr ? new Dictionary<string, OcrCacheRecord>() : LoadCache();
-        var sdir = cfg.ScreenshotsDir;
-        var files = ListPngs(sdir);
-        files.Sort(StringComparer.Ordinal);
+        var organize = OrganizeEnabled(cfg);
         if (rebuild) ClearToolFiles(cfg);
+
+        var files = organize
+            ? ListOriginals(cfg)
+            : ListPngs(cfg.ScreenshotsDir).Select(f => Path.Combine(cfg.ScreenshotsDir, f)).ToList();
+        files.Sort(StringComparer.Ordinal);
+
         int nCun = 0, nAj = 0;
         for (int i = 0; i < files.Count; i++)
         {
-            var full = Path.Combine(sdir, files[i]);
-            var rec = GetOcr(full, cfg, cache, ocr);
-            var matches = Classify(rec.Score, rec.Attack, rec.Miss, cfg);
-            if (matches.Count > 0)
-            {
-                CopyMatches(full, rec, matches, cfg);
-                var kinds = matches.Select(c => c.Kind).ToHashSet();
-                if (kinds.Overlaps(CunKinds)) nCun++;
-                if (kinds.Contains("aj")) nAj++;
-            }
+            var (rec, matches) = ProcessFile(files[i], cfg, cache, ocr, organize);
+            if (matches.Select(c => c.Kind).ToHashSet().Overlaps(CunKinds)) nCun++;
+            if (rec.Attack == 0 && rec.Miss == 0) nAj++;   // AJ is intrinsic now, not a rule
             int done = i + 1;
             if (progress != null && done % 5 == 0) progress(done, files.Count, nCun, nAj);
             if (done % 25 == 0) SaveCache(cache);
         }
         SaveCache(cache);
+        if (organize) PruneEmptyDirs(cfg.OutputRoot);
         progress?.Invoke(files.Count, files.Count, nCun, nAj);
         return new ScanResult { Total = files.Count, Cun = nCun, Aj = nAj };
     }
 
-    /// <summary>Sorted (date, cunCount, ajCount) derived from cache + config.</summary>
-    public static List<(string Date, int Cun, int Aj)> DailyCounts(CunConfig cfg,
+    /// <summary>Sorted (date, cunCount, ajCount, fcCount) derived from cache + config.
+    /// AJ and FC are intrinsic: AJ = A0/M0, FC = M0 with attacks.</summary>
+    public static List<(string Date, int Cun, int Aj, int Fc)> DailyCounts(CunConfig cfg,
         Dictionary<string, OcrCacheRecord>? cache = null)
     {
         cache ??= LoadCache();
@@ -225,12 +351,13 @@ public static class ClassifierService
             if (!mobj.Success) continue;
             var date = mobj.Groups[1].Value;
             var kinds = Classify(rec.Score, rec.Attack, rec.Miss, cfg).Select(c => c.Kind).ToHashSet();
-            if (!days.TryGetValue(date, out var d)) days[date] = d = new int[2];
+            if (!days.TryGetValue(date, out var d)) days[date] = d = new int[3];
             if (kinds.Overlaps(CunKinds)) d[0]++;
-            if (kinds.Contains("aj")) d[1]++;
+            if (rec.Attack == 0 && rec.Miss == 0) d[1]++;                       // AJ
+            else if (rec.Miss == 0 && rec.Attack is int a && a > 0) d[2]++;     // FC
         }
         return days.OrderBy(kv => kv.Key, StringComparer.Ordinal)
-                   .Select(kv => (kv.Key, kv.Value[0], kv.Value[1])).ToList();
+                   .Select(kv => (kv.Key, kv.Value[0], kv.Value[1], kv.Value[2])).ToList();
     }
 }
 

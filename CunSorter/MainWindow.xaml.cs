@@ -10,6 +10,7 @@ using Microsoft.UI.Dispatching;
 using Microsoft.UI.Windowing;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
+using Microsoft.UI.Xaml.Media.Animation;
 
 namespace CunSorter;
 
@@ -39,6 +40,7 @@ public sealed partial class MainWindow : Window
 
         _appWindow = GetAppWindow();
         _appWindow.Title = App.AppName;
+        Native.NativeUtil.EnableDarkTitleBar(WinRT.Interop.WindowNative.GetWindowHandle(this));
         _appWindow.Resize(new Windows.Graphics.SizeInt32(1040, 720));
         var ico = Path.Combine(ConfigService.Here, "Assets", "icon.ico");
         if (!File.Exists(ico)) ico = Path.Combine(AppContext.BaseDirectory, "Assets", "icon.ico");
@@ -65,15 +67,61 @@ public sealed partial class MainWindow : Window
         return AppWindow.GetFromWindowId(id);
     }
 
+    /// <summary>
+    /// Show the system folder picker, initialised against this window (required
+    /// for unpackaged WinUI 3 apps). Returns the chosen path, or null if cancelled.
+    /// </summary>
+    public async Task<string?> PickFolderAsync()
+    {
+        var picker = new Windows.Storage.Pickers.FolderPicker();
+        picker.FileTypeFilter.Add("*");
+        var hwnd = WinRT.Interop.WindowNative.GetWindowHandle(this);
+        WinRT.Interop.InitializeWithWindow.Initialize(picker, hwnd);
+        var folder = await picker.PickSingleFolderAsync();
+        return folder?.Path;
+    }
+
     private void Nav_SelectionChanged(NavigationView sender, NavigationViewSelectionChangedEventArgs args)
     {
         var tag = (args.SelectedItem as NavigationViewItem)?.Tag as string;
         switch (tag)
         {
-            case "config": ContentFrame.Content = ConfigPage; break;
-            case "stats": ContentFrame.Content = StatsPage; StatsPage.Refresh(); break;
-            case "run": ContentFrame.Content = RunPage; break;
+            case "config": ShowPage(ConfigPage); break;
+            case "stats": ShowPage(StatsPage); StatsPage.Refresh(); break;
+            case "run": ShowPage(RunPage); break;
         }
+    }
+
+    /// <summary>Swap the frame content with a brief fade + rise so page changes
+    /// don't snap. Opacity and TranslateTransform.Y both animate on the
+    /// composition thread, so this stays smooth without dependent animations.</summary>
+    private void ShowPage(UIElement page)
+    {
+        if (ReferenceEquals(ContentFrame.Content, page)) return;
+        ContentFrame.Content = page;
+
+        var sb = new Storyboard();
+        var fade = new DoubleAnimation
+        {
+            From = 0, To = 1,
+            Duration = new Duration(TimeSpan.FromMilliseconds(200)),
+            EasingFunction = new CubicEase { EasingMode = EasingMode.EaseOut },
+        };
+        Storyboard.SetTarget(fade, ContentFrame);
+        Storyboard.SetTargetProperty(fade, "Opacity");
+        sb.Children.Add(fade);
+
+        var slide = new DoubleAnimation
+        {
+            From = 16, To = 0,
+            Duration = new Duration(TimeSpan.FromMilliseconds(260)),
+            EasingFunction = new CubicEase { EasingMode = EasingMode.EaseOut },
+        };
+        Storyboard.SetTarget(slide, ContentTranslate);
+        Storyboard.SetTargetProperty(slide, "Y");
+        sb.Children.Add(slide);
+
+        sb.Begin();
     }
 
     // ----------------------------- tray --------------------------------------
@@ -117,6 +165,7 @@ public sealed partial class MainWindow : Window
             Info.Title = title;
             Info.Message = message;
             Info.Severity = severity;
+            InfoHost.Visibility = Visibility.Visible;
             Info.IsOpen = true;
             var t = DispatcherQueue.CreateTimer();
             t.Interval = TimeSpan.FromMilliseconds(durationMs);
@@ -125,6 +174,11 @@ public sealed partial class MainWindow : Window
             t.Start();
         });
     }
+
+    // Collapse the opaque host whenever the bar closes (timer or the user's ✕),
+    // so it doesn't leave an empty card occupying the top row.
+    private void Info_Closed(InfoBar sender, InfoBarClosedEventArgs args) =>
+        InfoHost.Visibility = Visibility.Collapsed;
 
     // ----------------------------- config ------------------------------------
     public void SaveConfigFromUi()
@@ -161,9 +215,16 @@ public sealed partial class MainWindow : Window
     {
         try
         {
+            var dir = Cfg.OutputRoot;
+            if (string.IsNullOrEmpty(dir))
+            {
+                ShowInfo("打开失败", "输出目录未配置", InfoBarSeverity.Error);
+                return;
+            }
+            Directory.CreateDirectory(dir);   // no-op if it already exists
             System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo
             {
-                FileName = Cfg.OutputRoot,
+                FileName = dir,
                 UseShellExecute = true,
             });
         }

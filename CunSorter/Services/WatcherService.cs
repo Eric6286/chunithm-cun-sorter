@@ -64,9 +64,8 @@ public sealed class WatcherService
         List<Category> matches;
         lock (_cacheLock)
         {
-            rec = ClassifierService.GetOcr(path, cfg, _cache, _ocr);
-            matches = ClassifierService.Classify(rec.Score, rec.Attack, rec.Miss, cfg);
-            if (matches.Count > 0) ClassifierService.CopyMatches(path, rec, matches, cfg);
+            (rec, matches) = ClassifierService.ProcessFile(
+                path, cfg, _cache, _ocr, ClassifierService.OrganizeEnabled(cfg));
             ClassifierService.SaveCache(_cache);
         }
         if (matches.Count > 0)

@@ -4,6 +4,7 @@ using System.Globalization;
 using System.Linq;
 using CunSorter.Services;
 using Microsoft.UI;
+using Microsoft.UI.Text;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Media;
@@ -20,7 +21,7 @@ namespace CunSorter.Pages;
 public sealed partial class StatsPage : Page
 {
     private readonly MainWindow _main;
-    private List<(string Date, int Cun, int Aj)> _data = new();
+    private List<(string Date, int Cun, int Aj, int Fc)> _data = new();
 
     public StatsPage(MainWindow main)
     {
@@ -79,6 +80,7 @@ public sealed partial class StatsPage : Page
         var gridBrush = new SolidColorBrush(Color.FromArgb(40, 128, 128, 128));
         var accent = Res("AccentFillColorDefaultBrush", Color.FromArgb(255, 0, 120, 215));
         var ajBrush = new SolidColorBrush(Color.FromArgb(255, 255, 180, 70));
+        var fcBrush = new SolidColorBrush(Color.FromArgb(255, 90, 200, 130));
 
         if (_data.Count == 0)
         {
@@ -89,11 +91,11 @@ public sealed partial class StatsPage : Page
             return;
         }
 
-        const double L = 44, R = 18, T = 16, B = 40;
+        const double L = 46, R = 18, T = 32, B = 42;
         double plotW = Math.Max(1, w - L - R);
         double plotH = Math.Max(1, h - T - B);
 
-        int ymax = Math.Max(1, _data.Max(d => Math.Max(d.Cun, d.Aj)));
+        int ymax = Math.Max(1, _data.Max(d => Math.Max(d.Cun, Math.Max(d.Aj, d.Fc))));
         int yTop = ymax + 1;
 
         double Xpos(int i) => _data.Count == 1 ? L + plotW / 2 : L + plotW * i / (_data.Count - 1);
@@ -105,9 +107,9 @@ public sealed partial class StatsPage : Page
         {
             double y = Ypos(v);
             canvas.Children.Add(MakeLine(L, y, L + plotW, y, gridBrush, 1));
-            var lbl = new TextBlock { Text = v.ToString(), Foreground = sub, FontSize = 11 };
+            var lbl = new TextBlock { Text = v.ToString(), Foreground = sub, FontSize = 13 };
             Canvas.SetLeft(lbl, 6);
-            Canvas.SetTop(lbl, y - 8);
+            Canvas.SetTop(lbl, y - 9);
             canvas.Children.Add(lbl);
         }
 
@@ -119,9 +121,9 @@ public sealed partial class StatsPage : Page
         foreach (var i in shown)
         {
             var date = DateTime.ParseExact(_data[i].Date, "yyyy-MM-dd", CultureInfo.InvariantCulture);
-            var lbl = new TextBlock { Text = date.ToString("M/d"), Foreground = sub, FontSize = 11 };
-            Canvas.SetLeft(lbl, Xpos(i) - 12);
-            Canvas.SetTop(lbl, T + plotH + 8);
+            var lbl = new TextBlock { Text = date.ToString("M/d"), Foreground = sub, FontSize = 13 };
+            Canvas.SetLeft(lbl, Xpos(i) - 13);
+            Canvas.SetTop(lbl, T + plotH + 10);
             canvas.Children.Add(lbl);
         }
 
@@ -136,6 +138,17 @@ public sealed partial class StatsPage : Page
         for (int i = 0; i < _data.Count; i++)
             canvas.Children.Add(MakeDot(Xpos(i), Ypos(_data[i].Aj), ajBrush, 3));
 
+        // FC line (green dashed)
+        var fcPts = new PointCollection();
+        for (int i = 0; i < _data.Count; i++) fcPts.Add(new Point(Xpos(i), Ypos(_data[i].Fc)));
+        canvas.Children.Add(new Polyline
+        {
+            Points = fcPts, Stroke = fcBrush, StrokeThickness = 2,
+            StrokeDashArray = new DoubleCollection { 4, 3 },
+        });
+        for (int i = 0; i < _data.Count; i++)
+            canvas.Children.Add(MakeDot(Xpos(i), Ypos(_data[i].Fc), fcBrush, 3));
+
         // 寸 line (accent, thicker) with value labels
         var cunPts = new PointCollection();
         for (int i = 0; i < _data.Count; i++) cunPts.Add(new Point(Xpos(i), Ypos(_data[i].Cun)));
@@ -144,15 +157,17 @@ public sealed partial class StatsPage : Page
         {
             double x = Xpos(i), y = Ypos(_data[i].Cun);
             canvas.Children.Add(MakeDot(x, y, accent, 4));
-            var vl = new TextBlock { Text = _data[i].Cun.ToString(), Foreground = fg, FontSize = 11 };
-            Canvas.SetLeft(vl, x - 5);
-            Canvas.SetTop(vl, y - 20);
+            var label = _data[i].Cun.ToString();
+            var vl = new TextBlock { Text = label, Foreground = fg, FontSize = 14, FontWeight = FontWeights.SemiBold };
+            Canvas.SetLeft(vl, x - label.Length * 4);   // rough centring for 1–2 digit counts
+            Canvas.SetTop(vl, y - 24);
             canvas.Children.Add(vl);
         }
 
         // legend
-        AddLegend(canvas, w - 120, 4, accent, "寸");
-        AddLegend(canvas, w - 70, 4, ajBrush, "AJ");
+        AddLegend(canvas, w - 174, 4, accent, "寸");
+        AddLegend(canvas, w - 120, 4, ajBrush, "AJ");
+        AddLegend(canvas, w - 64, 4, fcBrush, "FC");
     }
 
     private static Line MakeLine(double x1, double y1, double x2, double y2, Brush b, double th) => new()
@@ -174,7 +189,7 @@ public sealed partial class StatsPage : Page
         Canvas.SetLeft(dot, x);
         Canvas.SetTop(dot, y + 4);
         canvas.Children.Add(dot);
-        var lbl = new TextBlock { Text = text, Foreground = Res("TextFillColorPrimaryBrush", Colors.Gray), FontSize = 12 };
+        var lbl = new TextBlock { Text = text, Foreground = Res("TextFillColorPrimaryBrush", Colors.Gray), FontSize = 13 };
         Canvas.SetLeft(lbl, x + 16);
         Canvas.SetTop(lbl, y);
         canvas.Children.Add(lbl);

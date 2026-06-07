@@ -57,74 +57,24 @@
     "C": 500000,
     "D": 0
   },
-  "categories": [
-    {
-      "key": "AJ",
-      "label": "AJ",
-      "kind": "aj",
-      "enabled": true,
-      "folder": "AJ"
-    },
-    {
-      "key": "FC",
-      "label": "FC",
-      "kind": "fc",
-      "enabled": true,
-      "folder": "FC"
-    },
-    {
-      "key": "AJ寸",
-      "label": "AJ 寸",
-      "kind": "ajcun",
-      "enabled": true,
-      "folder": "寸/AJ寸",
-      "m_hi": 3
-    },
-    {
-      "key": "SSS+寸",
-      "label": "SSS+ 寸",
-      "kind": "score",
-      "enabled": true,
-      "folder": "寸/SSS+寸",
-      "lo": 1008600,
-      "hi": 1008999
-    },
-    {
-      "key": "SSS寸",
-      "label": "SSS 寸",
-      "kind": "score",
-      "enabled": true,
-      "folder": "寸/SSS寸",
-      "lo": 1007000,
-      "hi": 1007499
-    },
-    {
-      "key": "SS+寸",
-      "label": "SS+ 寸",
-      "kind": "score",
-      "enabled": false,
-      "folder": "寸/SS+寸",
-      "lo": 1004500,
-      "hi": 1004999
-    },
-    {
-      "key": "SS寸",
-      "label": "SS 寸",
-      "kind": "score",
-      "enabled": false,
-      "folder": "寸/SS寸",
-      "lo": 999500,
-      "hi": 999999
-    },
-    {
-      "key": "AM寸",
-      "label": "ATTACK+MISS",
-      "kind": "am",
-      "enabled": true,
-      "folder": "寸/AM寸",
-      "a_hi": 2,
-      "m_hi": 2,
-      "min_rank": "SSS"
-    }
-  ]
+  "categories": [],
+  "organize": {
+    "steps": [
+      {
+        "kind": "date",
+        "enabled": false,
+        "date_span": "month"
+      },
+      {
+        "kind": "rank",
+        "enabled": false,
+        "date_span": "month"
+      },
+      {
+        "kind": "achievement",
+        "enabled": false,
+        "date_span": "month"
+      }
+    ]
+  }
 }

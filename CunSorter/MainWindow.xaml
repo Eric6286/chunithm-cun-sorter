@@ -12,7 +12,7 @@
         <MicaBackdrop />
     </Window.SystemBackdrop>
 
-    <Grid>
+    <Grid RequestedTheme="Dark">
         <NavigationView
             x:Name="Nav"
             IsBackButtonVisible="Collapsed"
@@ -33,13 +33,30 @@
             </NavigationView.MenuItems>
 
             <Grid>
-                <Frame x:Name="ContentFrame" />
-                <InfoBar
-                    x:Name="Info"
-                    Margin="24,12,24,0"
+                <Frame x:Name="ContentFrame">
+                    <Frame.RenderTransform>
+                        <TranslateTransform x:Name="ContentTranslate" />
+                    </Frame.RenderTransform>
+                </Frame>
+                <!-- Floating toast: overlays the content (declared last = on top) so
+                     showing/hiding it never reflows the page. -->
+                <Border
+                    x:Name="InfoHost"
                     VerticalAlignment="Top"
-                    IsClosable="True"
-                    IsOpen="False" />
+                    Margin="24,12,24,0"
+                    Background="{ThemeResource SolidBackgroundFillColorSecondaryBrush}"
+                    BorderBrush="{ThemeResource SurfaceStrokeColorDefaultBrush}"
+                    BorderThickness="1"
+                    CornerRadius="8"
+                    Visibility="Collapsed">
+                    <InfoBar
+                        x:Name="Info"
+                        Background="Transparent"
+                        BorderThickness="0"
+                        IsClosable="True"
+                        IsOpen="False"
+                        Closed="Info_Closed" />
+                </Border>
             </Grid>
         </NavigationView>
 
