@@ -33,6 +33,27 @@ public static class ConfigService
     /// </summary>
     private static CunConfig Defaults() => new();
 
+    /// <summary>Built-in 评级判定 score presets (name + inclusive bounds). Single
+    /// source of truth shared by the add-rule dialog and the v1.1→v1.2 migration —
+    /// the former lived in the now-removed default Categories.</summary>
+    public static readonly (string Name, int Lo, int Hi)[] ScorePresets =
+    {
+        ("SSS+寸", 1008600, 1008999),
+        ("SSS寸", 1007000, 1007499),
+        ("SS+寸", 1004500, 1004999),
+        ("SS寸", 999500, 999999),
+    };
+
+    /// <summary>Keys of the v1.1 built-in preset rules. On upgrade these are
+    /// dropped (re-creatable from the add dialog), but any OTHER rule is kept and
+    /// treated as user-defined — so a user's hand-added rules and renamed/retuned
+    /// custom rules are NOT lost just because the old file predates the `custom`
+    /// flag.</summary>
+    private static readonly HashSet<string> LegacyBuiltinKeys = new()
+    {
+        "AJ", "FC", "AJ寸", "AM寸", "SSS+寸", "SSS寸", "SS+寸", "SS寸",
+    };
+
     public static CunConfig Load(string? path = null)
     {
         path ??= ConfigPath;
@@ -58,9 +79,15 @@ public static class ConfigService
             }
         }
 
-        // Only user-defined rules survive; legacy built-in presets are dropped so
-        // the judgment list starts clean (they're re-creatable from the add dialog).
-        cfg.Categories = cfg.Categories.Where(c => c.Custom).ToList();
+        // v1.1→v1.2 migration: drop only the legacy built-in presets (re-creatable
+        // from the add dialog). Keep every other rule — a user's hand-added or
+        // retuned rule from a file that predates the `custom` flag would otherwise
+        // be silently wiped. Survivors are marked custom so later loads leave them
+        // alone and the config page groups them correctly.
+        cfg.Categories = cfg.Categories
+            .Where(c => c.Custom || !LegacyBuiltinKeys.Contains(c.Key))
+            .ToList();
+        foreach (var c in cfg.Categories) c.Custom = true;
         EnsureOrganizeSteps(cfg);
 
         // Portable path resolution: drop the app folder into <CHUNITHM>\bin and it
@@ -78,6 +105,39 @@ public static class ConfigService
             if (found != null) cfg.TesseractCmd = found;
         }
         return cfg;
+    }
+
+    private static CunConfig? _cached;
+    private static DateTime _cachedStamp;
+    private static readonly object _loadLock = new();
+
+    /// <summary>
+    /// Cached <see cref="Load"/> for hot paths (the watcher polls every couple of
+    /// seconds): re-reads cun_config.json only when its last-write time changes,
+    /// otherwise returns the previously parsed instance — avoiding a full file
+    /// read + JSON deserialize + Tesseract PATH probe on every tick. Callers must
+    /// treat the result as read-only (it is shared); use <see cref="Load"/> when a
+    /// private mutable snapshot is needed (e.g. a background rescan).
+    /// </summary>
+    public static CunConfig LoadCached()
+    {
+        lock (_loadLock)
+        {
+            try
+            {
+                var stamp = File.Exists(ConfigPath)
+                    ? File.GetLastWriteTimeUtc(ConfigPath)
+                    : DateTime.MinValue;
+                if (_cached != null && stamp == _cachedStamp) return _cached;
+                _cached = Load();
+                _cachedStamp = stamp;
+                return _cached;
+            }
+            catch
+            {
+                return _cached ?? Load();
+            }
+        }
     }
 
     public static void Save(CunConfig cfg, string? path = null)

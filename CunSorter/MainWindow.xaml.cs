@@ -73,12 +73,23 @@ public sealed partial class MainWindow : Window
     /// </summary>
     public async Task<string?> PickFolderAsync()
     {
-        var picker = new Windows.Storage.Pickers.FolderPicker();
-        picker.FileTypeFilter.Add("*");
-        var hwnd = WinRT.Interop.WindowNative.GetWindowHandle(this);
-        WinRT.Interop.InitializeWithWindow.Initialize(picker, hwnd);
-        var folder = await picker.PickSingleFolderAsync();
-        return folder?.Path;
+        // The unpackaged WinUI 3 folder picker can throw (InitializeWithWindow /
+        // PickSingleFolderAsync HRESULTs). Callers are async void, so an unhandled
+        // throw would terminate the app — swallow to a friendly message + null.
+        try
+        {
+            var picker = new Windows.Storage.Pickers.FolderPicker();
+            picker.FileTypeFilter.Add("*");
+            var hwnd = WinRT.Interop.WindowNative.GetWindowHandle(this);
+            WinRT.Interop.InitializeWithWindow.Initialize(picker, hwnd);
+            var folder = await picker.PickSingleFolderAsync();
+            return folder?.Path;
+        }
+        catch (Exception e)
+        {
+            ShowInfo("选择目录失败", e.Message, InfoBarSeverity.Error);
+            return null;
+        }
     }
 
     private void Nav_SelectionChanged(NavigationView sender, NavigationViewSelectionChangedEventArgs args)
@@ -158,6 +169,8 @@ public sealed partial class MainWindow : Window
     }
 
     // ----------------------------- info bar ----------------------------------
+    private DispatcherQueueTimer? _infoTimer;
+
     public void ShowInfo(string title, string message, InfoBarSeverity severity, int durationMs = 3000)
     {
         DispatcherQueue.TryEnqueue(() =>
@@ -167,11 +180,17 @@ public sealed partial class MainWindow : Window
             Info.Severity = severity;
             InfoHost.Visibility = Visibility.Visible;
             Info.IsOpen = true;
-            var t = DispatcherQueue.CreateTimer();
-            t.Interval = TimeSpan.FromMilliseconds(durationMs);
-            t.IsRepeating = false;
-            t.Tick += (s, _) => { Info.IsOpen = false; t.Stop(); };
-            t.Start();
+            // One shared auto-close timer, reset on each call. Per-call timers would
+            // let an earlier one fire and close a newer toast prematurely.
+            if (_infoTimer == null)
+            {
+                _infoTimer = DispatcherQueue.CreateTimer();
+                _infoTimer.IsRepeating = false;
+                _infoTimer.Tick += (s, _) => { s.Stop(); Info.IsOpen = false; };
+            }
+            _infoTimer.Stop();
+            _infoTimer.Interval = TimeSpan.FromMilliseconds(durationMs);
+            _infoTimer.Start();
         });
     }
 
@@ -251,7 +270,7 @@ public sealed partial class MainWindow : Window
         else
         {
             _watcher = new WatcherService(
-                getCfg: () => ConfigService.Load(),
+                getCfg: () => ConfigService.LoadCached(),
                 ocr: Ocr,
                 onMatch: (f, rec, m) => DispatcherQueue.TryEnqueue(() => OnMatch(f, rec, m)),
                 onStatus: s => DispatcherQueue.TryEnqueue(() => OnStatus(s)));

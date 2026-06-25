@@ -4,6 +4,7 @@ using System.Globalization;
 using System.Linq;
 using CunSorter.Services;
 using Microsoft.UI;
+using Microsoft.UI.Dispatching;
 using Microsoft.UI.Text;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
@@ -29,12 +30,28 @@ public sealed partial class StatsPage : Page
         InitializeComponent();
     }
 
+    private DispatcherQueueTimer? _redraw;
+
     private void Refresh_Click(object sender, RoutedEventArgs e) => Refresh();
-    private void Chart_SizeChanged(object sender, SizeChangedEventArgs e) => DrawChart();
+
+    private void Chart_SizeChanged(object sender, SizeChangedEventArgs e)
+    {
+        // Coalesce the burst of SizeChanged events during a window drag-resize into
+        // a single redraw, instead of rebuilding the whole chart on every tick.
+        if (_redraw == null)
+        {
+            _redraw = DispatcherQueue.CreateTimer();
+            _redraw.IsRepeating = false;
+            _redraw.Tick += (s, _) => { s.Stop(); DrawChart(); };
+        }
+        _redraw.Stop();
+        _redraw.Interval = TimeSpan.FromMilliseconds(80);
+        _redraw.Start();
+    }
 
     public void Refresh()
     {
-        var cfg = ConfigService.Load();
+        var cfg = ConfigService.LoadCached();
         _data = ClassifierService.DailyCounts(cfg);
 
         var now = DateTime.Now;

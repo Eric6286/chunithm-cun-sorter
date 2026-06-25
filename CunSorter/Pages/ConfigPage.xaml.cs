@@ -183,11 +183,16 @@ public sealed partial class ConfigPage : Page
         return sp;
     }
 
-    // 评级判定 second-level presets (a named preset fills a score range; the last
-    // entry lets the user type a custom range).
-    private static readonly string[] RankPresetNames = { "SSS+寸", "SSS寸", "SS+寸", "SS寸", "自定义区间" };
+    // 评级判定 second-level presets. The named ranges come from
+    // ConfigService.ScorePresets (single source of truth) and the last entry lets
+    // the user type a custom range (null bounds).
+    private static readonly string[] RankPresetNames =
+        ConfigService.ScorePresets.Select(p => p.Name).Append("自定义区间").ToArray();
     private static readonly (int Lo, int Hi)?[] RankPresetVals =
-        { (1008600, 1008999), (1007000, 1007499), (1004500, 1004999), (999500, 999999), null };
+        ConfigService.ScorePresets
+            .Select(p => ((int Lo, int Hi)?)(p.Lo, p.Hi))
+            .Append(null)
+            .ToArray();
 
     /// <summary>Dialog to define a new 寸 judgment rule: name, a top-level type
     /// (评级判定 / 差点AJ / ATTACK+MISS), the kind-specific bounds, and an output
@@ -297,7 +302,12 @@ public sealed partial class ConfigPage : Page
             Content = content,
             XamlRoot = XamlRoot,
         };
-        if (await dlg.ShowAsync() != ContentDialogResult.Primary) return;
+        // ShowAsync throws if another ContentDialog is already open or XamlRoot is
+        // unavailable; in an async void handler that would crash the app, so guard it.
+        ContentDialogResult result;
+        try { result = await dlg.ShowAsync(); }
+        catch (Exception ex) { _main.ShowInfo("打开对话框失败", ex.Message, InfoBarSeverity.Error); return; }
+        if (result != ContentDialogResult.Primary) return;
 
         var label = nameBox.Text.Trim();
         if (string.IsNullOrEmpty(label))

@@ -25,4 +25,11 @@ public class OcrCacheRecord
     [JsonPropertyName("score")] public int? Score { get; set; }
     [JsonPropertyName("attack")] public int? Attack { get; set; }
     [JsonPropertyName("miss")] public int? Miss { get; set; }
+
+    // File size (bytes) at OCR time. The cache is keyed by bare filename, so two
+    // different files sharing a name (now possible since scans recurse subfolders)
+    // would otherwise collide; a size mismatch forces a re-OCR instead of reusing
+    // the wrong record. Null for records written by older versions (treated as a
+    // match for backward compatibility).
+    [JsonPropertyName("size")][JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] public long? Size { get; set; }
 }
