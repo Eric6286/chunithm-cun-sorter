@@ -89,6 +89,7 @@ public static class ConfigService
             .ToList();
         foreach (var c in cfg.Categories) c.Custom = true;
         EnsureOrganizeSteps(cfg);
+        cfg.DgHub ??= new DgHubConfig();   // guard an explicit "dghub": null in the file
 
         // Portable path resolution: drop the app folder into <CHUNITHM>\bin and it
         // finds <CHUNITHM>\bin\screenshots automatically.

@@ -18,7 +18,9 @@ public static class ClassifierService
     public static readonly string CachePath = Path.Combine(ConfigService.Here, "cun_ocr_cache.json");
     public static readonly string LogPath = Path.Combine(ConfigService.Here, "cun.log");
 
-    private static readonly HashSet<string> CunKinds = new() { "score", "am", "ajcun" };
+    /// <summary>Rule kinds that count as a 寸 hit (shared with the DGHub link's
+    /// settlement judgment).</summary>
+    public static readonly HashSet<string> CunKinds = new() { "score", "am", "ajcun" };
     private static readonly Regex DateRe = new(@"^(\d{4}-\d{2}-\d{2})", RegexOptions.Compiled);
 
     public static string Log(string msg)
@@ -245,24 +247,33 @@ public static class ClassifierService
     private static string AchievementSegment(OcrCacheRecord rec) =>
         IsAj(rec) ? "AJ" : IsFc(rec) ? "FC" : "普通";
 
-    /// <summary>The tool's own output folders (full paths): 寸 / AJ / FC and the
-    /// top-level segment of every rule folder. Files inside these are our copies,
-    /// not originals, so the scanner skips them by LOCATION — robust against user
-    /// screenshots whose names happen to contain "__".</summary>
-    private static List<string> ToolRoots(CunConfig cfg)
+    /// <summary>The tool's own output folders (full paths), split in two groups.
+    /// RuleRoots (寸 + the top segment of every rule folder) only ever receive our
+    /// copies, so the scanner skips them wholesale by LOCATION — robust against
+    /// user screenshots whose names happen to contain "__". AJ / FC however
+    /// double as the ACHIEVEMENT-organize destinations: originals moved there by
+    /// organize must still be scanned, so under those roots only files carrying
+    /// the "__" copy marker (legacy AJ/FC rule copies) are skipped.</summary>
+    private static (List<string> RuleRoots, List<string> AchievementRoots) ToolRoots(CunConfig cfg)
     {
-        var names = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
-            { cfg.CunFolder, cfg.AjFolder, "FC" };
+        var ruleNames = new HashSet<string>(StringComparer.OrdinalIgnoreCase) { cfg.CunFolder };
         foreach (var c in cfg.Categories)
             if (!string.IsNullOrEmpty(c.Folder))
-                names.Add(c.Folder.Replace("\\", "/").Split('/')[0]);
-        var roots = new List<string>();
-        foreach (var n in names)
+                ruleNames.Add(c.Folder.Replace("\\", "/").Split('/')[0]);
+        var achievementNames = new[] { cfg.AjFolder, "FC" }
+            .Where(n => !string.IsNullOrEmpty(n) && !ruleNames.Contains(n));
+
+        List<string> Resolve(IEnumerable<string> names)
         {
-            if (string.IsNullOrEmpty(n)) continue;
-            try { roots.Add(Path.GetFullPath(Path.Combine(cfg.OutputRoot, n))); } catch { /* skip */ }
+            var roots = new List<string>();
+            foreach (var n in names)
+            {
+                if (string.IsNullOrEmpty(n)) continue;
+                try { roots.Add(Path.GetFullPath(Path.Combine(cfg.OutputRoot, n))); } catch { /* skip */ }
+            }
+            return roots;
         }
-        return roots;
+        return (Resolve(ruleNames), Resolve(achievementNames));
     }
 
     private static bool IsUnder(string fullPath, IEnumerable<string> roots)
@@ -313,7 +324,7 @@ public static class ClassifierService
     /// scans (and counts) files already archived in subfolders.</summary>
     private static List<string> ListOriginals(CunConfig cfg)
     {
-        var toolRoots = ToolRoots(cfg);
+        var (ruleRoots, achievementRoots) = ToolRoots(cfg);
         var roots = new List<string> { cfg.ScreenshotsDir };
         if (!PathsEqual(cfg.OutputRoot, cfg.ScreenshotsDir)) roots.Add(cfg.OutputRoot);
         var seen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
@@ -328,7 +339,10 @@ public static class ClassifierService
             {
                 string full;
                 try { full = Path.GetFullPath(f); } catch { continue; }
-                if (IsUnder(full, toolRoots)) continue;     // our own copy, not an original
+                if (IsUnder(full, ruleRoots)) continue;     // our own copy, not an original
+                // AJ / FC hold both organized ORIGINALS (scan them) and legacy
+                // rule copies (skip via the "__" marker OutName always adds).
+                if (IsUnder(full, achievementRoots) && Path.GetFileName(full).Contains("__")) continue;
                 if (seen.Add(full)) result.Add(f);
             }
         }

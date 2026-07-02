@@ -71,6 +71,24 @@
                 </StackPanel>
             </Border>
 
+            <TextBlock Text="DGHub 联动" Style="{ThemeResource TitleTextBlockStyle}" Margin="0,8,0,0" />
+            <Border Style="{StaticResource RowCard}">
+                <StackPanel Spacing="12">
+                    <TextBlock Style="{ThemeResource CaptionTextBlockStyle}" Opacity="0.7" TextWrapping="Wrap"
+                               Text="开启后从游戏内存实时读取判定计数（只读，不修改游戏），在本机提供数据服务；由 DGHub 里的「今天你寸了吗 · 联动」插件（导入 dghub-plugin 的 zip 包）读取并触发波形。MISS / ATTACK / 结算的强度、波形预设、通道等都在 DGHub 的插件配置页里调；结算是否「寸了」按上面的判定规则计算。改完点「保存配置」立即生效。" />
+                    <StackPanel Orientation="Horizontal" Spacing="14">
+                        <ToggleSwitch x:Name="DgEnabledSw" OnContent="" OffContent="" MinWidth="0" />
+                        <TextBlock Text="启用 DGHub 联动" VerticalAlignment="Center"
+                                   Style="{ThemeResource BodyStrongTextBlockStyle}" />
+                        <TextBlock Text="本机数据端口" VerticalAlignment="Center" Margin="24,0,0,0" />
+                        <NumberBox x:Name="DgPortBox" Width="110" Minimum="1" Maximum="65535"
+                                   SpinButtonPlacementMode="Hidden" VerticalAlignment="Center" />
+                        <TextBlock Text="（与插件配置里的端点一致，默认 8890）" VerticalAlignment="Center"
+                                   Style="{ThemeResource CaptionTextBlockStyle}" Opacity="0.7" />
+                    </StackPanel>
+                </StackPanel>
+            </Border>
+
             <StackPanel Orientation="Horizontal" Spacing="10" Margin="0,8,0,0">
                 <Button x:Name="SaveBtn" Click="Save_Click">
                     <StackPanel Orientation="Horizontal" Spacing="8">

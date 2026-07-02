@@ -46,6 +46,27 @@ public class CunConfig
 
     [JsonPropertyName("organize")]
     public OrganizeConfig Organize { get; set; } = new();
+
+    [JsonPropertyName("dghub")]
+    public DgHubConfig DgHub { get; set; } = new();
+
+    // Path of the game's start.bat that the user hooked for auto-launch (empty =
+    // never configured). Whether the hook is currently active is read from the
+    // bat file itself, so the two can't drift apart.
+    [JsonPropertyName("start_bat")]
+    public string StartBat { get; set; } = "";
+}
+
+/// <summary>
+/// DGHub link settings on the cun side: just the switch and the local port the
+/// event server listens on. Trigger behaviour (waveform preset, strengths,
+/// channel, durations) is configured in the DGHub plugin's own config page —
+/// cun only publishes judgment data and the settlement 寸 verdict.
+/// </summary>
+public class DgHubConfig
+{
+    [JsonPropertyName("enabled")] public bool Enabled { get; set; }
+    [JsonPropertyName("port")] public int Port { get; set; } = 8890;   // 8888 belongs to Chuni2Api
 }
 
 /// <summary>

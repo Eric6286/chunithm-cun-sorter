@@ -58,6 +58,10 @@
     "D": 0
   },
   "categories": [],
+  "dghub": {
+    "enabled": false,
+    "port": 8890
+  },
   "organize": {
     "steps": [
       {

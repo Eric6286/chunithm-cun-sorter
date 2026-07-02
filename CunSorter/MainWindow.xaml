@@ -60,10 +60,15 @@
             </Grid>
         </NavigationView>
 
+        <!-- ContextMenuMode=SecondWindow: the flyout is hosted in its own hidden
+             window, so menu clicks still fire while the main window is hidden in
+             the tray (the default mode drops them). Double-click = show, as a
+             menu-independent fallback. -->
         <tb:TaskbarIcon
             x:Name="TrayIcon"
             ToolTipText="今天你寸了吗"
-            IconSource="Assets/icon.ico">
+            IconSource="Assets/icon.ico"
+            ContextMenuMode="SecondWindow">
             <tb:TaskbarIcon.ContextFlyout>
                 <MenuFlyout>
                     <MenuFlyoutItem Text="显示主界面" Click="Tray_Show" />

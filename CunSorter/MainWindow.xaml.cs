@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using System.Threading.Tasks;
 using CunSorter.Models;
 using CunSorter.Pages;
@@ -32,10 +33,14 @@ public sealed partial class MainWindow : Window
     private readonly AppWindow _appWindow;
     private readonly DispatcherQueueTimer _gameTimer;
     private WatcherService? _watcher;
+    private JudgeMemoryService? _judge;
+    private LinkServerService? _link;
 
     public MainWindow()
     {
         InitializeComponent();
+        // Double-click the tray icon = show, independent of the context menu.
+        TrayIcon.DoubleClickCommand = new RelayCommand(ShowNormal);
         Cfg = ConfigService.Load();
 
         _appWindow = GetAppWindow();
@@ -58,6 +63,7 @@ public sealed partial class MainWindow : Window
         _gameTimer.Tick += (_, _) => UpdateGameLabel();
         _gameTimer.Start();
         UpdateGameLabel();
+        ApplyDgHubLink();
     }
 
     private AppWindow GetAppWindow()
@@ -90,6 +96,39 @@ public sealed partial class MainWindow : Window
             ShowInfo("选择目录失败", e.Message, InfoBarSeverity.Error);
             return null;
         }
+    }
+
+    /// <summary>Show the system file picker filtered to the given extensions
+    /// (e.g. ".bat"). Returns the chosen path, or null if cancelled.</summary>
+    public async Task<string?> PickFileAsync(params string[] extensions)
+    {
+        try
+        {
+            var picker = new Windows.Storage.Pickers.FileOpenPicker();
+            foreach (var e in extensions) picker.FileTypeFilter.Add(e);
+            var hwnd = WinRT.Interop.WindowNative.GetWindowHandle(this);
+            WinRT.Interop.InitializeWithWindow.Initialize(picker, hwnd);
+            var file = await picker.PickSingleFileAsync();
+            return file?.Path;
+        }
+        catch (Exception e)
+        {
+            ShowInfo("选择文件失败", e.Message, InfoBarSeverity.Error);
+            return null;
+        }
+    }
+
+    /// <summary>start.bat launch (--watch): begin watching right away and drop to
+    /// the tray, so the game boot isn't covered by our window.</summary>
+    public void EnterWatchMode()
+    {
+        if (!WatcherRunning) ToggleWatch();
+        DispatcherQueue.TryEnqueue(() =>
+        {
+            _appWindow.Hide();
+            try { TrayIcon.ShowNotification(App.AppName, "已随游戏启动，后台监视中。"); }
+            catch { /* notifications are best-effort */ }
+        });
     }
 
     private void Nav_SelectionChanged(NavigationView sender, NavigationViewSelectionChangedEventArgs args)
@@ -136,6 +175,15 @@ public sealed partial class MainWindow : Window
     }
 
     // ----------------------------- tray --------------------------------------
+    private sealed class RelayCommand : System.Windows.Input.ICommand
+    {
+        private readonly Action _run;
+        public RelayCommand(Action run) => _run = run;
+        public event EventHandler? CanExecuteChanged { add { } remove { } }
+        public bool CanExecute(object? p) => true;
+        public void Execute(object? p) => _run();
+    }
+
     private void Tray_Show(object sender, RoutedEventArgs e) => ShowNormal();
 
     private void ShowNormal()
@@ -149,6 +197,8 @@ public sealed partial class MainWindow : Window
     private void Quit()
     {
         _watcher?.Stop();
+        _judge?.Stop();
+        _link?.Stop();
         try { TrayIcon.Dispose(); } catch { /* ignore */ }
         Application.Current.Exit();
     }
@@ -204,6 +254,7 @@ public sealed partial class MainWindow : Window
     {
         ConfigPage.ReadInto(Cfg);
         ConfigService.Save(Cfg);
+        ApplyDgHubLink();
         ShowInfo("已保存", "配置已写入 cun_config.json", InfoBarSeverity.Success);
     }
 
@@ -287,6 +338,71 @@ public sealed partial class MainWindow : Window
     }
 
     private void OnStatus(string msg) => RunPage.SetWatchLabel("监视: " + msg);
+
+    // ----------------------------- DGHub link --------------------------------
+    /// <summary>Start/stop the memory reader + local event server to match
+    /// Cfg.DgHub.Enabled. Called at startup and after every config save, so the
+    /// toggle on the config page takes effect immediately. The DGHub plugin
+    /// (dghub-plugin/) connects to the server and does the actual triggering.</summary>
+    public void ApplyDgHubLink()
+    {
+        bool want = Cfg.DgHub.Enabled;
+        if (want)
+        {
+            if (_link is not { IsRunning: true })
+            {
+                _link = new LinkServerService(
+                    onStatus: s => DispatcherQueue.TryEnqueue(() => RunPage.SetLinkLabel("联动: " + s)));
+                _link.Start(Cfg.DgHub.Port);
+            }
+            if (_judge is not { IsRunning: true })
+            {
+                _judge = new JudgeMemoryService(
+                    getProcessName: () => ConfigService.LoadCached().GameProcess,
+                    onStatus: s => DispatcherQueue.TryEnqueue(() => RunPage.SetJudgeLabel("判定: " + s)),
+                    onDelta: (_, _) => { },              // plugin derives realtime deltas itself
+                    onSongEnd: OnSongEnd,
+                    onTick: c => _link?.UpdateCounts(c));
+                _judge.Start();
+            }
+        }
+        else
+        {
+            _link?.Stop(); _link = null;
+            _judge?.Stop(); _judge = null;
+            RunPage.SetLinkLabel("联动: 未启用");
+            RunPage.SetJudgeLabel("判定: 未启用");
+        }
+    }
+
+    /// <summary>A song finished (memory freed / counters reset): derive the final
+    /// score from the judgment counts, run the user's 寸 rules on it and publish
+    /// the verdict to the plugin (memory-reader thread).</summary>
+    private void OnSongEnd(JudgeCounts final)
+    {
+        var cfg = ConfigService.LoadCached();
+        var score = final.Score;
+        var rank = ConfigService.RankOf(score, cfg) ?? "?";
+        var matches = ClassifierService.Classify(score, final.Attack, final.Miss, cfg)
+            .Where(c => ClassifierService.CunKinds.Contains(c.Kind)).ToList();
+        var keys = string.Join("+", matches.Select(c => c.Key));
+
+        _link?.PublishSettle(new
+        {
+            @event = "settle",
+            cun = matches.Count > 0,
+            rules = keys,
+            score,
+            rank,
+            critical = final.Critical,
+            justice = final.Justice,
+            attack = final.Attack,
+            miss = final.Miss,
+        });
+        var summary = $"得分≈{score} {rank} A{final.Attack}M{final.Miss}";
+        DispatcherQueue.TryEnqueue(() =>
+            RunPage.AppendLog($"🏁 结算 {summary}  [{(matches.Count > 0 ? keys : "未寸")}]"));
+    }
 
     private void UpdateGameLabel()
     {

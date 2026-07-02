@@ -35,6 +35,13 @@ public sealed partial class ConfigPage : Page
         foreach (var cat in _main.Cfg.Categories)
             RuleRows.Children.Add(BuildCard(cat));
         BuildOrganizeList();
+        InitDgHub(_main.Cfg.DgHub);
+    }
+
+    private void InitDgHub(DgHubConfig d)
+    {
+        DgEnabledSw.IsOn = d.Enabled;
+        DgPortBox.Value = d.Port > 0 ? d.Port : 8890;
     }
 
     private async void BrowseShots_Click(object sender, RoutedEventArgs e)
@@ -453,6 +460,9 @@ public sealed partial class ConfigPage : Page
     {
         cfg.ScreenshotsDir = ShotsDirBox.Text.Trim();
         cfg.OutputRoot = OutDirBox.Text.Trim();
+
+        cfg.DgHub.Enabled = DgEnabledSw.IsOn;
+        cfg.DgHub.Port = IVal(DgPortBox, 8890);
 
         // Organize steps: take the (possibly drag-reordered) list order, enabled
         // state and per-step date span straight off the ListView.

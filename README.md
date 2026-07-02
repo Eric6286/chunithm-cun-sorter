@@ -22,7 +22,7 @@
 
 > 「寸」判定**只复制原图**；一旦开启「整理」，**识别到成绩的**结算截图会被**移动**到归档文件夹（只移动、不删除，可还原）；**无法识别的图片（壁纸、其它截图等）留在原地不动**。识别只在结算画面发生、以最低 CPU 优先级运行，不影响游戏帧数。
 
-> 本项目使用 **WinUI 3 + .NET 8**（Windows App SDK）开发。最新版本：[**Release v1.2.1**](https://github.com/Eric6286/chunithm-cun-sorter/releases/latest)（自包含构建，**免装 .NET 运行时**）。
+> 本项目使用 **WinUI 3 + .NET 8**（Windows App SDK）开发。最新版本：[**Release v1.3**](https://github.com/Eric6286/chunithm-cun-sorter/releases/latest)（自包含构建，**免装 .NET 运行时**）。
 
 ## ✨ 功能特性
 
@@ -31,7 +31,8 @@
 - 🖼️ Fluent 2 设计 + Win11 Mica 模糊 + **深色标题栏**；切换页面带淡入过渡动画
 - 📈 每日 **寸 / AJ / FC** 数量曲线 + 统计卡片（今天 / 近 7 天 / 累计 / 最高一天）
 - 🐢 低占用：结算画面才识别、IDLE 优先级、OCR 结果缓存；可选「关游戏后再处理」模式
-- 🎮 通过**轮询进程**检测游戏启停，**无需改动 `start.bat`**
+- 🎮 通过**轮询进程**检测游戏启停，**无需改动 `start.bat`**；也可选**接入 start.bat**——一键在其中注入自启动行，开游戏时本程序自动启动、开始监视并缩到托盘（原文件自动备份 `.cun-backup`，取消勾选即还原；单实例保证不重复启动）
+- ⚡ **DGHub 联动**（可选）：从游戏内存**只读**判定计数（签名扫描，移植自 [Chuni2Api](https://github.com/iyxddw/Chuni2Api)），配套 **DGHub 外部插件**（`dghub-plugin/`，导入 zip 即用）：打歌中 **MISS / ATTACK** 实时触发波形；**结算时按你的「寸」规则判定**（得分由判定数换算），寸了就触发。强度 / 时长 / 波形预设 / 通道都在 **DGHub 的插件配置页**里调
 - 🔔 系统托盘常驻、可开机自启
 - 📦 自包含发布，运行**不需要安装 .NET 或 Python**
 
@@ -48,11 +49,16 @@
 
 ### 方式一：下载 Release（推荐，免装 .NET / Python）
 1. 安装 **Tesseract OCR**（见上）。
-2. 下载最新 **`chunithm-cun-sorter_v1.2.1_win64.zip`**，解压得到 `cun` 文件夹，放到你的 **`<CHUNITHM>\bin\`** 里（即与 `screenshots` 同级，最终为 `<CHUNITHM>\bin\cun\`）。
+2. 下载最新 **`chunithm-cun-sorter_v1.3_win64.zip`**，解压得到 `cun` 文件夹，放到你的 **`<CHUNITHM>\bin\`** 里（即与 `screenshots` 同级，最终为 `<CHUNITHM>\bin\cun\`）。
 3. 双击 **`app\今天你寸了吗.exe`** 启动（可右键「发送到 → 桌面快捷方式」方便以后打开）。
 4. 在「配置」页设好**截图目录**、添加**判定规则**、按需开启**整理**；游戏照常用 `start.bat` 启动，让程序常驻即可自动归档。点「应用并重新扫描」可整理历史截图。
 
 > 截图目录默认自动取 **`<安装目录上级>\screenshots`**；若不在那儿，在「配置 → 目录设置」用「浏览…」手动指定即可（也可直接改 `cun_config.json` 的 `screenshots_dir`）。
+
+### DGHub 联动（可选）
+1. 下载 Release 里的 **`cun_dghub_plugin_v1.3.zip`**（或自己把仓库 `dghub-plugin/` 目录压成 zip），在 DGHub **插件中心 → 外部插件 → 导入 zip 包** 安装「今天你寸了吗 · 联动」。
+2. 在 cun 的 **配置 → DGHub 联动** 打开开关并保存（默认端口 8890）。
+3. 在 DGHub 里启用该插件，进插件配置页调 **MISS / ATTACK / 结算** 的开关、强度、波形预设（下拉自动列出 DGHub 的预设）和通道；「启动检查」能看到 cun 数据服务是否连上。
 
 ### 方式二：从源码构建运行
 ```powershell
@@ -76,9 +82,10 @@ dotnet publish CunSorter/CunSorter.csproj -c Release -r win-x64 --self-contained
   - **目录设置**：截图目录（要扫描的原图）/ 输出目录（分类结果根目录），均可「浏览…」选择。
   - **判定规则（寸）**：自定义规则列表，点「添加判定规则」→ 选**评级判定 / AJ寸 / ATTACK+MISS**；命中的图会**复制**到 `寸/` 下并计入统计。每条可删除。
   - **整理**：`根据日期整理` / `根据评级整理` / `根据达成整理` 三行，各自开关；**拖动或 ↑↓ 排序**决定嵌套层级。**开启任一项后，扫描会把原图移动到对应文件夹。**
+  - **DGHub 联动**：总开关 + 本机数据端口（默认 8890）。触发强度 / 波形预设 / 通道等在 **DGHub 的插件配置页**调节（见「DGHub 联动」小节）。保存后立即生效。
   - `保存配置` / `应用并重新扫描`（按当前规则后台重建，不卡界面）/ `打开输出文件夹`
 - **统计**：每日 **寸 / AJ / FC** 数量曲线 + 今天 / 近 7 天 / 累计 / 最高一天。
-- **运行**：切换 `realtime` / `on_close` 模式、启停监视、显示游戏状态、最近命中、开机自启。
+- **运行**：切换 `realtime` / `on_close` 模式、启停监视、显示游戏状态、联动状态（数据服务 / 判定读取）、最近命中、开机自启、**接入 start.bat**（勾选后选择游戏的 `start.bat`，注入 `start "chunithm-cun-sorter" "<exe>" --watch` 一行：开游戏即自动启动本程序、开始监视并缩到托盘；取消勾选自动移除该行）。
   监视运行时关闭窗口会**最小化到托盘**继续后台监视（右键托盘可显示主界面或退出）。
 
 ## 🏷️ 判定与整理
@@ -118,6 +125,9 @@ dotnet publish CunSorter/CunSorter.csproj -c Release -r win-x64 --self-contained
 | `categories[]` | **自定义判定规则**（`enabled / kind / folder` + 各自参数）；初始为空，由界面增删；从 v1.1 升级时旧内置预设会被丢弃，但你手动添加 / 改过的规则会保留 |
 | `organize.steps[]` | **整理维度与顺序**：每项含 `kind`（`date` / `rank` / `achievement`）、`enabled`、`date_span`（`year` / `month` / `day`，仅 date 用）。列表顺序即文件夹嵌套顺序 |
 | `boxes` / `dark_threshold` / `bright_threshold` | OCR 区域与阈值（基于 1920×1080） |
+| `start_bat` | 已接入的游戏 `start.bat` 路径（由「运行」页的勾选框管理；是否接入以 bat 内容为准） |
+| `dghub.enabled` | DGHub 联动总开关（默认 `false`） |
+| `dghub.port` | 联动数据服务监听的本机端口（默认 `8890`；触发强度 / 波形等在 DGHub 插件配置页调，不在这里） |
 
 > **数据目录定位**：程序从 exe 所在目录起**逐级向上**查找 `cun_config.json`——所以正式部署把 exe 放在 `bin\cun\app\`、配置放 `bin\cun\` 即可自动找到；`dotnet run` 调试时也能向上定位到仓库里的配置。
 
@@ -126,6 +136,17 @@ dotnet publish CunSorter/CunSorter.csproj -c Release -r win-x64 --self-contained
 读取结算画面**顶部状态栏**的清晰字体：隔离白字的深色描边 → 用 Tesseract 识别 `SCORE / ATTACK / MISS`，
 由得分换算评级（顶栏在某项为 0 时会隐藏该项，据此判 0）。大号彩虹分数/评级因字体花哨**不**直接 OCR。
 OCR 结果缓存在 `cun_ocr_cache.json`，改区间后重新判定是**瞬间**完成的（无需重新识别）。
+
+**DGHub 联动**不走 OCR：按 [Chuni2Api](https://github.com/iyxddw/Chuni2Api) 的方式在游戏进程内存里签名扫描
+`NUM_jctirical` 等字段名定位四个判定计数地址（**只读**，不写内存、不注入），20Hz 轮询。
+曲目结束时计数内存被释放（或原地清零），以此为结算信号，用最后一帧计数换算得分
+（CHUNITHM 无连击加成：`得分 = 1,000,000/物量 × (1.01×JC + 1.0×JUSTICE + 0.5×ATTACK)`，与实际显示最多差 ±1），
+再跑与截图分类相同的「寸」规则引擎得出是否「寸了」。
+
+分工与 Chuni2Api 生态一致：**cun 只出数据**——在 `127.0.0.1:8890` 提供 SSE 流（`/events`：判定计数 +
+带寸判定结果的 `settle` 事件；`/data`：快照）；**触发在 DGHub 插件里**——`dghub-plugin/` 是标准
+DGHub 外部插件（由 DGHub 启动并传入 token，无需任何手动配置），订阅该流后按插件配置页里的
+开关 / 强度 / 波形预设 / 通道发 `trigger`。
 
 ## 📁 目录结构
 
@@ -139,6 +160,7 @@ OCR 结果缓存在 `cun_ocr_cache.json`，改区间后重新判定是**瞬间**
 │  ├─ Services/      # OCR / 配置 / 分类·整理·扫描 / 监视 / 自启 / 原生工具
 │  ├─ Pages/         # 配置 / 统计 / 运行 三页
 │  └─ Assets/        # icon.ico / 奶奶蛙.png
+├─ dghub-plugin/     # DGHub 外部插件（manifest.json + main.py；压 zip 后在 DGHub 导入）
 ├─ cun_config.json   # 种子配置（界面读写；发版时随包附带）
 ├─ 奶奶蛙.png         # 图标源图
 ├─ .github/workflows/ # build.yml（编译 CI）/ release.yml（tag 触发发版）
@@ -147,6 +169,7 @@ OCR 结果缓存在 `cun_ocr_cache.json`，改区间后重新判定是**瞬间**
 
 各 `Services` 模块职责：`OcrService`（结算画面 OCR）、`ConfigService`（配置读写 / 路径解析 / 评级）、
 `ClassifierService`（分类 / 复制 / 整理移动 / 扫描 / 缓存 / 每日统计）、`WatcherService`（游戏感知后台监视）、
+`JudgeMemoryService`（游戏内存判定计数只读 + 曲终检测）、`LinkServerService`（本机 SSE 数据服务，供 DGHub 插件订阅）、
 `AutostartService`（开机自启）、`NativeUtil`（进程检测 / IDLE 优先级 / 数据目录 / 深色标题栏）。
 
 ## ❓ FAQ
@@ -155,8 +178,20 @@ OCR 结果缓存在 `cun_ocr_cache.json`，改区间后重新判定是**瞬间**
 - **提示找不到 OCR 引擎？** 装一下 Tesseract OCR，或把含 `eng.traineddata` 的 `tessdata` 放到 exe 同级 / 配好 `tesseract_cmd`。
 - **开了整理后原图不见了？** 整理只把**识别到成绩**的结算截图**移动**到归档文件夹（如 `日期/评级/达成`），不是删除；在输出目录对应子文件夹里能找到，可手动移回。无法识别的图片（壁纸、其它截图）会留在原地不动。
 - **会不会掉帧？** 识别只在结算画面、IDLE 优先级；或把 `process_mode` 设为 `on_close`，游戏中零识别。
+- **DGHub 联动连不上？** 三步排查：① cun「运行」页联动状态是否「监听 …8890」；② DGHub 插件「启动检查」里 cun 数据服务是否 OK（不是就核对插件配置里的端点端口与 cun 一致）；③ 插件已在 DGHub 里启用。
+- **联动会改游戏内存吗？** 不会。只用 `ReadProcessMemory` 读取判定计数，不写入、不注入、不 hook。
+- **「接入 start.bat」改了什么？** 只在 `@echo off` 之后插入一行 `start "chunithm-cun-sorter" "<本程序路径>" --watch`（保留原文件编码与换行风格），并在同目录留一份 `.cun-backup` 备份；取消勾选即精确移除该行。程序若已在运行则不会重复启动（单实例）。
 
 ## 📝 更新记录
+
+### v1.3（2026-07-01）
+- ⚡ **新增 DGHub 联动**：从游戏内存只读判定计数（签名扫描，移植自 [Chuni2Api](https://github.com/iyxddw/Chuni2Api)），打歌中 **MISS / ATTACK** 实时触发波形，**结算时按你的「寸」判定规则**（得分由判定数精确换算）命中即触发。
+- 🔌 配套 **DGHub 外部插件** `dghub-plugin/`（Release 附 `cun_dghub_plugin_*.zip`，DGHub「导入 zip 包」安装）：触发开关 / 强度 / 波形预设（自动拉取 DGHub 预设列表）/ 通道 / 持续时长全部在 **DGHub 插件配置页**调节，支持「启动检查」；cun 侧在 `127.0.0.1:8890` 提供 SSE 数据服务（判定流 + 结算寸判定事件）。
+- 🖥️ 「配置」页新增 **DGHub 联动**开关与数据端口；「运行」页新增联动状态，结算记录进「最近命中」日志。
+- 🚀 **新增「接入 start.bat」**（「运行」页）：一键向游戏 `start.bat` 注入自启动行，开游戏即自动启动本程序、开始监视并缩到托盘；原文件备份 `.cun-backup`、保留原编码与换行、取消勾选精确还原；程序改为**单实例**（重复启动自动退出）。
+- 🐛 **修复：窗口隐藏在托盘时，右键菜单点了没反应**——托盘菜单改用独立窗口承载（H.NotifyIcon `SecondWindow` 模式），「显示主界面 / 退出」在任何状态下都能点；另外**双击托盘图标**也可直接显示主界面。
+- 🐛 **修复：开启「达成」整理后 AJ / FC 原图不再被扫描统计**——归档到根 `AJ\`、`FC\` 的原图曾被当作旧版工具副本整树跳过（v1.2 起的潜在问题，「达成」排最外层时触发）；现在这两个目录下只跳过带 `__` 标记的副本，原图照常扫描。
+- 📄 `cun_config.json` 新增 `dghub` 配置节（`enabled` / `port`）与 `start_bat`；发版流程随包产出插件 zip。
 
 ### v1.2.1（2026-06-25）
 - 🛡️ **整理更安全**：只移动**识别到成绩**的结算截图；目录里的壁纸 / 其它图片、以及识别失败的图**留在原地不动**（不再被扫进 `未知日期` / `未知评级` 之类文件夹）。
