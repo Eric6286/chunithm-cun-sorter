@@ -44,6 +44,8 @@ public sealed partial class RunPage : Page
 
     public void SetWatchLabel(string text) => WatchLabel.Text = text;
     public void SetGameLabel(string text) => GameLabel.Text = text;
+    public void SetLinkLabel(string text) => LinkLabel.Text = text;
+    public void SetJudgeLabel(string text) => JudgeLabel.Text = text;
 
     public void AppendLog(string line)
     {

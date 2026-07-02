@@ -18,7 +18,9 @@ public static class ClassifierService
     public static readonly string CachePath = Path.Combine(ConfigService.Here, "cun_ocr_cache.json");
     public static readonly string LogPath = Path.Combine(ConfigService.Here, "cun.log");
 
-    private static readonly HashSet<string> CunKinds = new() { "score", "am", "ajcun" };
+    /// <summary>Rule kinds that count as a 寸 hit (shared with the DGHub link's
+    /// settlement judgment).</summary>
+    public static readonly HashSet<string> CunKinds = new() { "score", "am", "ajcun" };
     private static readonly Regex DateRe = new(@"^(\d{4}-\d{2}-\d{2})", RegexOptions.Compiled);
 
     public static string Log(string msg)

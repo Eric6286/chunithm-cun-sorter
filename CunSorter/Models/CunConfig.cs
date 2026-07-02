@@ -46,6 +46,33 @@ public class CunConfig
 
     [JsonPropertyName("organize")]
     public OrganizeConfig Organize { get; set; } = new();
+
+    [JsonPropertyName("dghub")]
+    public DgHubConfig DgHub { get; set; } = new();
+}
+
+/// <summary>
+/// DGHub (DG-Lab hub) link settings: real-time MISS/ATTACK triggers read from
+/// game memory, plus a settlement-time trigger when the final result matches any
+/// enabled 寸 rule. All strengths are rollback-mode percentages (0–100).
+/// </summary>
+public class DgHubConfig
+{
+    [JsonPropertyName("enabled")] public bool Enabled { get; set; }
+    [JsonPropertyName("host")] public string Host { get; set; } = "127.0.0.1";
+    [JsonPropertyName("port")] public int Port { get; set; }
+    [JsonPropertyName("preset")] public string Preset { get; set; } = "CS2-受伤";
+    [JsonPropertyName("channel")] public string Channel { get; set; } = "both";   // a | b | both
+
+    [JsonPropertyName("miss_enabled")] public bool MissEnabled { get; set; } = true;
+    [JsonPropertyName("miss_pct")] public int MissPct { get; set; } = 30;
+    [JsonPropertyName("attack_enabled")] public bool AttackEnabled { get; set; }
+    [JsonPropertyName("attack_pct")] public int AttackPct { get; set; } = 15;
+    [JsonPropertyName("realtime_duration_s")] public double RealtimeDurationS { get; set; } = 1.5;
+
+    [JsonPropertyName("settle_enabled")] public bool SettleEnabled { get; set; } = true;
+    [JsonPropertyName("settle_pct")] public int SettlePct { get; set; } = 50;
+    [JsonPropertyName("settle_duration_s")] public double SettleDurationS { get; set; } = 3.0;
 }
 
 /// <summary>

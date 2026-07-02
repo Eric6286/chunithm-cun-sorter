@@ -71,6 +71,68 @@
                 </StackPanel>
             </Border>
 
+            <TextBlock Text="DGHub 联动" Style="{ThemeResource TitleTextBlockStyle}" Margin="0,8,0,0" />
+            <Border Style="{StaticResource RowCard}">
+                <StackPanel Spacing="12">
+                    <TextBlock Style="{ThemeResource CaptionTextBlockStyle}" Opacity="0.7" TextWrapping="Wrap"
+                               Text="从游戏内存实时读取判定计数（只读，不修改游戏），通过本机 DGHub 触发波形：打歌中 MISS / ATTACK 即时触发；结算时按上面的「寸」判定规则命中即触发。需要 DGHub 主程序在本机运行。改完点「保存配置」立即生效。" />
+                    <Grid ColumnSpacing="14">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto" />
+                            <ColumnDefinition Width="*" />
+                        </Grid.ColumnDefinitions>
+                        <ToggleSwitch x:Name="DgEnabledSw" Grid.Column="0" OnContent="" OffContent="" MinWidth="0" />
+                        <TextBlock Grid.Column="1" Text="启用 DGHub 联动" VerticalAlignment="Center"
+                                   Style="{ThemeResource BodyStrongTextBlockStyle}" />
+                    </Grid>
+
+                    <StackPanel Orientation="Horizontal" Spacing="10">
+                        <TextBlock Text="DGHub 地址" MinWidth="84" VerticalAlignment="Center" />
+                        <TextBox x:Name="DgHostBox" Width="140" VerticalAlignment="Center" />
+                        <TextBlock Text="API 端口" VerticalAlignment="Center" />
+                        <NumberBox x:Name="DgPortBox" Width="110" Minimum="0" Maximum="65535"
+                                   SpinButtonPlacementMode="Hidden" VerticalAlignment="Center"
+                                   PlaceholderText="见 DGHub" />
+                        <TextBlock Text="波形预设" VerticalAlignment="Center" />
+                        <TextBox x:Name="DgPresetBox" Width="140" VerticalAlignment="Center" />
+                        <TextBlock Text="通道" VerticalAlignment="Center" />
+                        <ComboBox x:Name="DgChannelBox" Width="110" VerticalAlignment="Center">
+                            <ComboBoxItem Content="双通道" />
+                            <ComboBoxItem Content="A 通道" />
+                            <ComboBoxItem Content="B 通道" />
+                        </ComboBox>
+                    </StackPanel>
+
+                    <StackPanel Orientation="Horizontal" Spacing="10">
+                        <TextBlock Text="实时触发" MinWidth="84" VerticalAlignment="Center"
+                                   Style="{ThemeResource BodyStrongTextBlockStyle}" />
+                        <ToggleSwitch x:Name="DgMissSw" OnContent="" OffContent="" MinWidth="0" />
+                        <TextBlock Text="MISS，强度%" VerticalAlignment="Center" />
+                        <NumberBox x:Name="DgMissPct" Width="90" Minimum="0" Maximum="100"
+                                   SpinButtonPlacementMode="Hidden" VerticalAlignment="Center" />
+                        <ToggleSwitch x:Name="DgAtkSw" OnContent="" OffContent="" MinWidth="0" />
+                        <TextBlock Text="ATTACK，强度%" VerticalAlignment="Center" />
+                        <NumberBox x:Name="DgAtkPct" Width="90" Minimum="0" Maximum="100"
+                                   SpinButtonPlacementMode="Hidden" VerticalAlignment="Center" />
+                        <TextBlock Text="持续(秒)" VerticalAlignment="Center" />
+                        <NumberBox x:Name="DgRtDur" Width="90" Minimum="0" Maximum="300"
+                                   SpinButtonPlacementMode="Hidden" VerticalAlignment="Center" />
+                    </StackPanel>
+
+                    <StackPanel Orientation="Horizontal" Spacing="10">
+                        <TextBlock Text="结算触发" MinWidth="84" VerticalAlignment="Center"
+                                   Style="{ThemeResource BodyStrongTextBlockStyle}" />
+                        <ToggleSwitch x:Name="DgSettleSw" OnContent="" OffContent="" MinWidth="0" />
+                        <TextBlock Text="命中「寸」规则时，强度%" VerticalAlignment="Center" />
+                        <NumberBox x:Name="DgSettlePct" Width="90" Minimum="0" Maximum="100"
+                                   SpinButtonPlacementMode="Hidden" VerticalAlignment="Center" />
+                        <TextBlock Text="持续(秒)" VerticalAlignment="Center" />
+                        <NumberBox x:Name="DgSettleDur" Width="90" Minimum="0" Maximum="300"
+                                   SpinButtonPlacementMode="Hidden" VerticalAlignment="Center" />
+                    </StackPanel>
+                </StackPanel>
+            </Border>
+
             <StackPanel Orientation="Horizontal" Spacing="10" Margin="0,8,0,0">
                 <Button x:Name="SaveBtn" Click="Save_Click">
                     <StackPanel Orientation="Horizontal" Spacing="8">

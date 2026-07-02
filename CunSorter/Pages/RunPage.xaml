@@ -21,6 +21,7 @@
             <RowDefinition Height="Auto" />
             <RowDefinition Height="Auto" />
             <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
             <RowDefinition Height="*" />
         </Grid.RowDefinitions>
 
@@ -53,12 +54,22 @@
             </StackPanel>
         </Border>
 
-        <CheckBox Grid.Row="3" x:Name="AutostartBox" Content="开机自启「今天你寸了吗」"
+        <!-- DGHub link status (configured on the config page) -->
+        <Border Grid.Row="3" Style="{StaticResource RunCard}">
+            <StackPanel Orientation="Horizontal" Spacing="16" VerticalAlignment="Center">
+                <TextBlock Text="DGHub 联动" Style="{ThemeResource BodyStrongTextBlockStyle}"
+                           VerticalAlignment="Center" />
+                <TextBlock x:Name="LinkLabel" Text="DGHub: 未启用" VerticalAlignment="Center" />
+                <TextBlock x:Name="JudgeLabel" Text="判定: 未启用" VerticalAlignment="Center" />
+            </StackPanel>
+        </Border>
+
+        <CheckBox Grid.Row="4" x:Name="AutostartBox" Content="开机自启「今天你寸了吗」"
                   Click="Autostart_Click" />
 
-        <TextBlock Grid.Row="4" Text="最近命中" Style="{ThemeResource BodyStrongTextBlockStyle}" />
+        <TextBlock Grid.Row="5" Text="最近命中" Style="{ThemeResource BodyStrongTextBlockStyle}" />
 
-        <TextBox Grid.Row="5" x:Name="LogBox" IsReadOnly="True" AcceptsReturn="True"
+        <TextBox Grid.Row="6" x:Name="LogBox" IsReadOnly="True" AcceptsReturn="True"
                  TextWrapping="Wrap" ScrollViewer.VerticalScrollBarVisibility="Auto"
                  FontFamily="Consolas" />
     </Grid>
