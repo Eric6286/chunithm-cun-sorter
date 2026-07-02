@@ -50,6 +50,9 @@ public class CunConfig
     [JsonPropertyName("dghub")]
     public DgHubConfig DgHub { get; set; } = new();
 
+    [JsonPropertyName("capture")]
+    public CaptureConfig Capture { get; set; } = new();
+
     // Path of the game's start.bat that the user hooked for auto-launch (empty =
     // never configured). Whether the hook is currently active is read from the
     // bat file itself, so the two can't drift apart.
@@ -67,6 +70,23 @@ public class DgHubConfig
 {
     [JsonPropertyName("enabled")] public bool Enabled { get; set; }
     [JsonPropertyName("port")] public int Port { get; set; } = 8890;   // 8888 belongs to Chuni2Api
+}
+
+/// <summary>
+/// Built-in result-screen capture (replaces the external screenshot tool):
+/// after the memory reader's song-end signal, grab the game window once the
+/// settlement screen shows and file the PNG with memory-derived judgment data
+/// (no OCR). Needs the memory reader, which runs when this or the DGHub link
+/// is enabled.
+/// </summary>
+public class CaptureConfig
+{
+    [JsonPropertyName("enabled")] public bool Enabled { get; set; }
+    // Seconds to wait after the settlement screen is first detected, so the
+    // score tally animation has finished rolling before the frame is kept.
+    [JsonPropertyName("delay_s")] public double DelayS { get; set; } = 2.5;
+    // Give up if no settlement screen shows this long after the song ended.
+    [JsonPropertyName("timeout_s")] public double TimeoutS { get; set; } = 30.0;
 }
 
 /// <summary>

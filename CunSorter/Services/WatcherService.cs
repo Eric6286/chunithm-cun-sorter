@@ -43,6 +43,18 @@ public sealed class WatcherService
 
     public bool IsRunning => _task is { IsCompleted: false };
 
+    /// <summary>Pre-seed the OCR cache for a screenshot whose judgment data is
+    /// already known (memory-linked capture), so the watcher classifies it
+    /// without running OCR. Persisted immediately.</summary>
+    public void SeedCache(string filename, OcrCacheRecord rec)
+    {
+        lock (_cacheLock)
+        {
+            _cache[filename] = rec;
+            ClassifierService.SaveCache(_cache);
+        }
+    }
+
     public void Start()
     {
         if (IsRunning) return;

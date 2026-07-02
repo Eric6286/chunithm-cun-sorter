@@ -42,6 +42,8 @@ public sealed partial class ConfigPage : Page
     {
         DgEnabledSw.IsOn = d.Enabled;
         DgPortBox.Value = d.Port > 0 ? d.Port : 8890;
+        CapEnabledSw.IsOn = _main.Cfg.Capture.Enabled;
+        CapDelayBox.Value = _main.Cfg.Capture.DelayS;
     }
 
     private async void BrowseShots_Click(object sender, RoutedEventArgs e)
@@ -463,6 +465,8 @@ public sealed partial class ConfigPage : Page
 
         cfg.DgHub.Enabled = DgEnabledSw.IsOn;
         cfg.DgHub.Port = IVal(DgPortBox, 8890);
+        cfg.Capture.Enabled = CapEnabledSw.IsOn;
+        cfg.Capture.DelayS = double.IsNaN(CapDelayBox.Value) ? cfg.Capture.DelayS : CapDelayBox.Value;
 
         // Organize steps: take the (possibly drag-reordered) list order, enabled
         // state and per-step date span straight off the ListView.
