@@ -11,10 +11,13 @@ namespace CunSorter.Services;
 /// watch mode. The injected line is
 /// <c>start "chunithm-cun-sorter" "&lt;exe&gt;" --watch</c> — the quoted start
 /// window title doubles as the removal marker. The file is edited at the BYTE
-/// level (lines split on \n): untouched lines keep their exact bytes, so we
-/// never re-encode someone's GBK/UTF-8 batch content. Our own line (the exe
+/// level (lines split on \n): existing line CONTENT keeps its exact bytes, so
+/// we never re-encode someone's GBK/UTF-8 batch text. Our own line (the exe
 /// path may contain Chinese) is encoded GBK by default, matching cmd's default
 /// codepage on Chinese Windows, or UTF-8 when the bat has a BOM / `chcp 65001`.
+/// Output is always joined with CRLF: cmd's batch parser is only reliable with
+/// CRLF — in an LF-only bat it eats the first character of the line following
+/// <c>@echo off</c>, turning our injected `start` into `tart` (observed live).
 /// A one-time <c>*.cun-backup</c> copy is kept next to the original.
 /// </summary>
 public static class StartBatService
@@ -59,7 +62,7 @@ public static class StartBatService
             }
         }
         lines.Insert(insertAt, cmd);
-        File.WriteAllBytes(batPath, JoinLines(lines, UsesCrLf(original)));
+        File.WriteAllBytes(batPath, JoinLines(lines));
     }
 
     /// <summary>Remove the auto-launch line (no-op if absent).</summary>
@@ -70,7 +73,7 @@ public static class StartBatService
         var lines = SplitLines(bytes);
         var kept = lines.Where(l => !AsciiView(l).Contains(Marker)).ToList();
         if (kept.Count != lines.Count)
-            File.WriteAllBytes(batPath, JoinLines(kept, UsesCrLf(bytes)));
+            File.WriteAllBytes(batPath, JoinLines(kept));
     }
 
     // ----------------------------- byte-level lines ---------------------------
@@ -89,27 +92,16 @@ public static class StartBatService
         return lines;
     }
 
-    private static byte[] JoinLines(List<byte[]> lines, bool crlf)
+    private static byte[] JoinLines(List<byte[]> lines)
     {
-        var nl = crlf ? "\r\n"u8 : "\n"u8;
         using var ms = new MemoryStream();
         for (int i = 0; i < lines.Count; i++)
         {
             ms.Write(lines[i]);
-            if (i < lines.Count - 1) ms.Write(nl);
+            if (i < lines.Count - 1) ms.Write("\r\n"u8);
         }
-        ms.Write(nl);                                    // keep a trailing newline
+        ms.Write("\r\n"u8);                              // keep a trailing newline
         return ms.ToArray();
-    }
-
-    /// <summary>Match the file's existing newline style so untouched lines stay
-    /// byte-identical (some setups ship LF-only bats).</summary>
-    private static bool UsesCrLf(byte[] bytes)
-    {
-        for (int i = 0; i < bytes.Length; i++)
-            if (bytes[i] == (byte)'\n')
-                return i > 0 && bytes[i - 1] == (byte)'\r';
-        return true;                                     // no newline yet: default CRLF
     }
 
     /// <summary>Latin-1 view of a line: ASCII bytes map 1:1 in both GBK and

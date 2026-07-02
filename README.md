@@ -180,7 +180,7 @@ DGHub 外部插件（由 DGHub 启动并传入 token，无需任何手动配置�
 - **会不会掉帧？** 识别只在结算画面、IDLE 优先级；或把 `process_mode` 设为 `on_close`，游戏中零识别。
 - **DGHub 联动连不上？** 三步排查：① cun「运行」页联动状态是否「监听 …8890」；② DGHub 插件「启动检查」里 cun 数据服务是否 OK（不是就核对插件配置里的端点端口与 cun 一致）；③ 插件已在 DGHub 里启用。
 - **联动会改游戏内存吗？** 不会。只用 `ReadProcessMemory` 读取判定计数，不写入、不注入、不 hook。
-- **「接入 start.bat」改了什么？** 只在 `@echo off` 之后插入一行 `start "chunithm-cun-sorter" "<本程序路径>" --watch`（保留原文件编码与换行风格），并在同目录留一份 `.cun-backup` 备份；取消勾选即精确移除该行。程序若已在运行则不会重复启动（单实例）。
+- **「接入 start.bat」改了什么？** 只在 `@echo off` 之后插入一行 `start "chunithm-cun-sorter" "<本程序路径>" --watch`（保留原有各行内容与编码，换行统一为批处理标准的 CRLF——cmd 对纯 LF 的 bat 会吞掉行首字符），并在同目录留一份 `.cun-backup` 备份；取消勾选即精确移除该行。程序若已在运行则不会重复启动（单实例）。
 
 ## 📝 更新记录
 
