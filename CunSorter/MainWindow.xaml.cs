@@ -35,6 +35,7 @@ public sealed partial class MainWindow : Window
     private WatcherService? _watcher;
     private JudgeMemoryService? _judge;
     private LinkServerService? _link;
+    private CaptureService? _capture;
 
     public MainWindow()
     {
@@ -339,40 +340,88 @@ public sealed partial class MainWindow : Window
 
     private void OnStatus(string msg) => RunPage.SetWatchLabel("监视: " + msg);
 
-    // ----------------------------- DGHub link --------------------------------
-    /// <summary>Start/stop the memory reader + local event server to match
-    /// Cfg.DgHub.Enabled. Called at startup and after every config save, so the
-    /// toggle on the config page takes effect immediately. The DGHub plugin
-    /// (dghub-plugin/) connects to the server and does the actual triggering.</summary>
+    // ----------------------------- memory link -------------------------------
+    /// <summary>Start/stop the memory reader plus its two consumers (DGHub event
+    /// server, result-screen capture) to match the config. Called at startup and
+    /// after every config save, so the toggles take effect immediately. The
+    /// DGHub plugin (dghub-plugin/) connects to the server and does the actual
+    /// triggering; capture archives the settlement screen with memory-derived
+    /// judgment data (no OCR).</summary>
     public void ApplyDgHubLink()
     {
-        bool want = Cfg.DgHub.Enabled;
-        if (want)
+        bool wantLink = Cfg.DgHub.Enabled;
+        bool wantCapture = Cfg.Capture.Enabled;
+
+        if (wantLink && _link is not { IsRunning: true })
         {
-            if (_link is not { IsRunning: true })
-            {
-                _link = new LinkServerService(
-                    onStatus: s => DispatcherQueue.TryEnqueue(() => RunPage.SetLinkLabel("联动: " + s)));
-                _link.Start(Cfg.DgHub.Port);
-            }
-            if (_judge is not { IsRunning: true })
-            {
-                _judge = new JudgeMemoryService(
-                    getProcessName: () => ConfigService.LoadCached().GameProcess,
-                    onStatus: s => DispatcherQueue.TryEnqueue(() => RunPage.SetJudgeLabel("判定: " + s)),
-                    onDelta: (_, _) => { },              // plugin derives realtime deltas itself
-                    onSongEnd: OnSongEnd,
-                    onTick: c => _link?.UpdateCounts(c));
-                _judge.Start();
-            }
+            _link = new LinkServerService(
+                onStatus: s => DispatcherQueue.TryEnqueue(() => RunPage.SetLinkLabel("联动: " + s)));
+            _link.Start(Cfg.DgHub.Port);
+        }
+        else if (!wantLink && _link != null)
+        {
+            _link.Stop(); _link = null;
+            RunPage.SetLinkLabel("联动: 未启用");
+        }
+
+        _capture = wantCapture
+            ? _capture ?? new CaptureService(
+                getCfg: () => ConfigService.LoadCached(),
+                onCaptured: OnCaptured,
+                onStatus: s =>
+                {
+                    ClassifierService.Log("[CAPTURE] " + s);   // persistent, for diagnosing timing
+                    DispatcherQueue.TryEnqueue(() => RunPage.AppendLog("📸 " + s));
+                })
+            : null;
+
+        bool wantJudge = wantLink || wantCapture;
+        if (wantJudge && _judge is not { IsRunning: true })
+        {
+            _judge = new JudgeMemoryService(
+                getProcessName: () => ConfigService.LoadCached().GameProcess,
+                onStatus: s => DispatcherQueue.TryEnqueue(() => RunPage.SetJudgeLabel("判定: " + s)),
+                onDelta: (_, _) => { },                  // plugin derives realtime deltas itself
+                onSongEnd: OnSongEnd,
+                onTick: c => _link?.UpdateCounts(c));
+            _judge.Start();
+        }
+        else if (!wantJudge && _judge != null)
+        {
+            _judge.Stop(); _judge = null;
+            RunPage.SetJudgeLabel("判定: 未启用");
+        }
+    }
+
+    /// <summary>A captured settlement screenshot was saved: record its judgment
+    /// data in the OCR cache (keyed by filename, size-validated) so the watcher
+    /// or the next scan classifies it without OCR (capture-service thread).</summary>
+    private void OnCaptured(string path, JudgeCounts final)
+    {
+        var fn = Path.GetFileName(path);
+        var rec = new OcrCacheRecord
+        {
+            Score = final.Score,
+            Attack = final.Attack,
+            Miss = final.Miss,
+            Size = TryFileSize(path),
+        };
+        if (_watcher is { IsRunning: true } w)
+        {
+            w.SeedCache(fn, rec);
         }
         else
         {
-            _link?.Stop(); _link = null;
-            _judge?.Stop(); _judge = null;
-            RunPage.SetLinkLabel("联动: 未启用");
-            RunPage.SetJudgeLabel("判定: 未启用");
+            var cache = ClassifierService.LoadCache();
+            cache[fn] = rec;
+            ClassifierService.SaveCache(cache);
         }
+        ClassifierService.Log($"[CAPTURE] {fn} score={rec.Score} A={rec.Attack} M={rec.Miss} (memory)");
+    }
+
+    private static long? TryFileSize(string path)
+    {
+        try { return new FileInfo(path).Length; } catch { return null; }
     }
 
     /// <summary>A song finished (memory freed / counters reset): derive the final
@@ -400,8 +449,11 @@ public sealed partial class MainWindow : Window
             miss = final.Miss,
         });
         var summary = $"得分≈{score} {rank} A{final.Attack}M{final.Miss}";
+        ClassifierService.Log($"[SETTLE] {summary} [{(matches.Count > 0 ? keys : "未寸")}]");
         DispatcherQueue.TryEnqueue(() =>
             RunPage.AppendLog($"🏁 结算 {summary}  [{(matches.Count > 0 ? keys : "未寸")}]"));
+
+        if (cfg.Capture.Enabled) _capture?.RequestCapture(final);
     }
 
     private void UpdateGameLabel()

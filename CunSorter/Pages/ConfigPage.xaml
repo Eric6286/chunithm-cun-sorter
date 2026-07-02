@@ -89,6 +89,25 @@
                 </StackPanel>
             </Border>
 
+            <TextBlock Text="自动截图（结算画面）" Style="{ThemeResource TitleTextBlockStyle}" Margin="0,8,0,0" />
+            <Border Style="{StaticResource RowCard}">
+                <StackPanel Spacing="12">
+                    <TextBlock Style="{ThemeResource CaptionTextBlockStyle}" Opacity="0.7" TextWrapping="Wrap"
+                               Text="由本程序在每首歌结算时自动截取游戏画面存入截图目录，识别数据直接取自内存（新截图不再需要 OCR）；开启后可停用原来的外部截图工具。依赖游戏内存读取——本开关或上面的 DGHub 联动任一开启即生效。历史截图的重扫仍走 OCR。" />
+                    <StackPanel Orientation="Horizontal" Spacing="14">
+                        <ToggleSwitch x:Name="CapEnabledSw" OnContent="" OffContent="" MinWidth="0" />
+                        <TextBlock Text="启用自动截图" VerticalAlignment="Center"
+                                   Style="{ThemeResource BodyStrongTextBlockStyle}" />
+                        <TextBlock Text="（识别到结算画面后等" VerticalAlignment="Center"
+                                   Style="{ThemeResource CaptionTextBlockStyle}" Opacity="0.7" Margin="24,0,0,0" />
+                        <NumberBox x:Name="CapDelayBox" Width="80" Minimum="0" Maximum="15"
+                                   SpinButtonPlacementMode="Hidden" VerticalAlignment="Center" />
+                        <TextBlock Text="秒再保存，等分数滚完）" VerticalAlignment="Center"
+                                   Style="{ThemeResource CaptionTextBlockStyle}" Opacity="0.7" />
+                    </StackPanel>
+                </StackPanel>
+            </Border>
+
             <StackPanel Orientation="Horizontal" Spacing="10" Margin="0,8,0,0">
                 <Button x:Name="SaveBtn" Click="Save_Click">
                     <StackPanel Orientation="Horizontal" Spacing="8">
