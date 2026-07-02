@@ -368,7 +368,11 @@ public sealed partial class MainWindow : Window
             ? _capture ?? new CaptureService(
                 getCfg: () => ConfigService.LoadCached(),
                 onCaptured: OnCaptured,
-                onStatus: s => DispatcherQueue.TryEnqueue(() => RunPage.AppendLog("📸 " + s)))
+                onStatus: s =>
+                {
+                    ClassifierService.Log("[CAPTURE] " + s);   // persistent, for diagnosing timing
+                    DispatcherQueue.TryEnqueue(() => RunPage.AppendLog("📸 " + s));
+                })
             : null;
 
         bool wantJudge = wantLink || wantCapture;
@@ -445,6 +449,7 @@ public sealed partial class MainWindow : Window
             miss = final.Miss,
         });
         var summary = $"得分≈{score} {rank} A{final.Attack}M{final.Miss}";
+        ClassifierService.Log($"[SETTLE] {summary} [{(matches.Count > 0 ? keys : "未寸")}]");
         DispatcherQueue.TryEnqueue(() =>
             RunPage.AppendLog($"🏁 结算 {summary}  [{(matches.Count > 0 ? keys : "未寸")}]"));
 

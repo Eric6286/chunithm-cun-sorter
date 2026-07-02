@@ -71,11 +71,14 @@ public sealed class CaptureService
     private async Task CaptureLoopAsync(JudgeCounts final)
     {
         var cfg = _getCfg();
-        var deadline = DateTime.UtcNow.AddSeconds(Math.Max(5, cfg.Capture.TimeoutS));
+        var start = DateTime.UtcNow;
+        var deadline = start.AddSeconds(Math.Max(5, cfg.Capture.TimeoutS));
+        int best = -1;                                   // best signature score seen, for diagnostics
         while (DateTime.UtcNow < deadline)
         {
             using (var frame = Grab(cfg.GameProcess))
             {
+                if (frame != null) best = Math.Max(best, SignatureScore(frame));
                 if (frame != null && IsResultScreen(frame))
                 {
                     // The chrome is up but the score tally may still be rolling —
@@ -85,7 +88,7 @@ public sealed class CaptureService
                     if (settled != null && IsResultScreen(settled))
                     {
                         var path = SavePng(settled, cfg.ScreenshotsDir);
-                        Status($"已截取结算画面 {Path.GetFileName(path)}");
+                        Status($"已截取结算画面 {Path.GetFileName(path)}（曲终后 {(DateTime.UtcNow - start).TotalSeconds:F1}s）");
                         try { _onCaptured(path, final); } catch { /* ignore */ }
                         return;
                     }
@@ -93,7 +96,9 @@ public sealed class CaptureService
             }
             await Task.Delay(PollMs);
         }
-        Status("未捕获到结算画面（超时）");
+        Status(best < 0
+            ? "未捕获：拿不到游戏画面（窗口不在？）"
+            : $"未捕获到结算画面（超时；最高指纹得分 {best}/{Signature.Length}）");
     }
 
     private static string SavePng(Bitmap bmp, string dir)
@@ -108,7 +113,9 @@ public sealed class CaptureService
     }
 
     // ----------------------------- frame check --------------------------------
-    private static bool IsResultScreen(Bitmap bmp)
+    private static bool IsResultScreen(Bitmap bmp) => SignatureScore(bmp) >= MatchNeed;
+
+    private static int SignatureScore(Bitmap bmp)
     {
         double sx = bmp.Width / 1920.0, sy = bmp.Height / 1080.0;
         int hit = 0;
@@ -121,7 +128,7 @@ public sealed class CaptureService
                 Math.Abs(c.B - b) <= MatchTol)
                 hit++;
         }
-        return hit >= MatchNeed;
+        return hit;
     }
 
     // ----------------------------- grabbing -----------------------------------
