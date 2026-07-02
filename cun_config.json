@@ -60,18 +60,7 @@
   "categories": [],
   "dghub": {
     "enabled": false,
-    "host": "127.0.0.1",
-    "port": 0,
-    "preset": "CS2-受伤",
-    "channel": "both",
-    "miss_enabled": true,
-    "miss_pct": 30,
-    "attack_enabled": false,
-    "attack_pct": 15,
-    "realtime_duration_s": 1.5,
-    "settle_enabled": true,
-    "settle_pct": 50,
-    "settle_duration_s": 3.0
+    "port": 8890
   },
   "organize": {
     "steps": [

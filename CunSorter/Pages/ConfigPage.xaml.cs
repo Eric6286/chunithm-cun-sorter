@@ -38,23 +38,10 @@ public sealed partial class ConfigPage : Page
         InitDgHub(_main.Cfg.DgHub);
     }
 
-    private static readonly string[] DgChannels = { "both", "a", "b" };
-
     private void InitDgHub(DgHubConfig d)
     {
         DgEnabledSw.IsOn = d.Enabled;
-        DgHostBox.Text = d.Host;
-        DgPortBox.Value = d.Port > 0 ? d.Port : double.NaN;
-        DgPresetBox.Text = d.Preset;
-        DgChannelBox.SelectedIndex = Math.Max(0, Array.IndexOf(DgChannels, d.Channel));
-        DgMissSw.IsOn = d.MissEnabled;
-        DgMissPct.Value = d.MissPct;
-        DgAtkSw.IsOn = d.AttackEnabled;
-        DgAtkPct.Value = d.AttackPct;
-        DgRtDur.Value = d.RealtimeDurationS;
-        DgSettleSw.IsOn = d.SettleEnabled;
-        DgSettlePct.Value = d.SettlePct;
-        DgSettleDur.Value = d.SettleDurationS;
+        DgPortBox.Value = d.Port > 0 ? d.Port : 8890;
     }
 
     private async void BrowseShots_Click(object sender, RoutedEventArgs e)
@@ -468,29 +455,14 @@ public sealed partial class ConfigPage : Page
         return (int)System.Math.Round(nb.Value);
     }
 
-    private static double DVal(NumberBox nb, double fallback) =>
-        double.IsNaN(nb.Value) ? fallback : nb.Value;
-
     /// <summary>Read the current UI state back into the config object.</summary>
     public void ReadInto(CunConfig cfg)
     {
         cfg.ScreenshotsDir = ShotsDirBox.Text.Trim();
         cfg.OutputRoot = OutDirBox.Text.Trim();
 
-        var d = cfg.DgHub;
-        d.Enabled = DgEnabledSw.IsOn;
-        d.Host = string.IsNullOrWhiteSpace(DgHostBox.Text) ? "127.0.0.1" : DgHostBox.Text.Trim();
-        d.Port = IVal(DgPortBox, 0);
-        d.Preset = DgPresetBox.Text.Trim();
-        d.Channel = DgChannels[Math.Max(0, DgChannelBox.SelectedIndex)];
-        d.MissEnabled = DgMissSw.IsOn;
-        d.MissPct = IVal(DgMissPct, d.MissPct);
-        d.AttackEnabled = DgAtkSw.IsOn;
-        d.AttackPct = IVal(DgAtkPct, d.AttackPct);
-        d.RealtimeDurationS = DVal(DgRtDur, d.RealtimeDurationS);
-        d.SettleEnabled = DgSettleSw.IsOn;
-        d.SettlePct = IVal(DgSettlePct, d.SettlePct);
-        d.SettleDurationS = DVal(DgSettleDur, d.SettleDurationS);
+        cfg.DgHub.Enabled = DgEnabledSw.IsOn;
+        cfg.DgHub.Port = IVal(DgPortBox, 8890);
 
         // Organize steps: take the (possibly drag-reordered) list order, enabled
         // state and per-step date span straight off the ListView.

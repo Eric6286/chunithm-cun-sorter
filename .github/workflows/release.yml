@@ -55,6 +55,10 @@ jobs:
           $zip = "chunithm-cun-sorter_${{ steps.ver.outputs.tag }}_win64.zip"
           Compress-Archive -Path dist/cun -DestinationPath $zip -Force
           "zip=$zip" | Out-File -FilePath $env:GITHUB_OUTPUT -Append
+          # DGHub plugin: zip the folder as-is for the plugin center's zip import.
+          $plugin = "cun_dghub_plugin_${{ steps.ver.outputs.tag }}.zip"
+          Compress-Archive -Path dghub-plugin/* -DestinationPath $plugin -Force
+          "plugin=$plugin" | Out-File -FilePath $env:GITHUB_OUTPUT -Append
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v3
@@ -77,4 +81,9 @@ jobs:
             - 需安装 Tesseract OCR（程序自动使用其 `tessdata`）
 
             本版为自包含构建，**无需安装 .NET 运行时**。详见仓库 [README](https://github.com/Eric6286/chunithm-cun-sorter#readme)。
-          files: ${{ steps.pack.outputs.zip }}
+
+            ### DGHub 联动（可选）
+            下载 **`cun_dghub_plugin_${{ steps.ver.outputs.tag }}.zip`**，在 DGHub「插件中心 → 外部插件 → 导入 zip 包」安装；波形 / 强度在 DGHub 插件配置页调节，cun 侧只需在「配置 → DGHub 联动」开启。
+          files: |
+            ${{ steps.pack.outputs.zip }}
+            ${{ steps.pack.outputs.plugin }}

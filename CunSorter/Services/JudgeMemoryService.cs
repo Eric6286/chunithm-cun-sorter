@@ -64,17 +64,20 @@ public sealed class JudgeMemoryService
     private readonly Action<string> _onStatus;
     private readonly Action<JudgeCounts, JudgeCounts> _onDelta;   // (prev, cur) while playing
     private readonly Action<JudgeCounts> _onSongEnd;              // final counters of a song
+    private readonly Action<JudgeCounts>? _onTick;                // every successful read (~20 Hz)
 
     private CancellationTokenSource? _cts;
     private Task? _task;
 
     public JudgeMemoryService(Func<string> getProcessName, Action<string> onStatus,
-        Action<JudgeCounts, JudgeCounts> onDelta, Action<JudgeCounts> onSongEnd)
+        Action<JudgeCounts, JudgeCounts> onDelta, Action<JudgeCounts> onSongEnd,
+        Action<JudgeCounts>? onTick = null)
     {
         _getProcessName = getProcessName;
         _onStatus = onStatus;
         _onDelta = onDelta;
         _onSongEnd = onSongEnd;
+        _onTick = onTick;
     }
 
     public bool IsRunning => _task is { IsCompleted: false };
@@ -167,6 +170,7 @@ public sealed class JudgeMemoryService
                 }
 
                 var c = cur.Value;
+                try { _onTick?.Invoke(c); } catch { /* ignore */ }
                 if (c.Total == 0)
                 {
                     // In-place reset to zero: menu, or the boundary after a song

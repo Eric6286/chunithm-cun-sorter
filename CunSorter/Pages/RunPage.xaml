@@ -59,7 +59,7 @@
             <StackPanel Orientation="Horizontal" Spacing="16" VerticalAlignment="Center">
                 <TextBlock Text="DGHub 联动" Style="{ThemeResource BodyStrongTextBlockStyle}"
                            VerticalAlignment="Center" />
-                <TextBlock x:Name="LinkLabel" Text="DGHub: 未启用" VerticalAlignment="Center" />
+                <TextBlock x:Name="LinkLabel" Text="联动: 未启用" VerticalAlignment="Center" />
                 <TextBlock x:Name="JudgeLabel" Text="判定: 未启用" VerticalAlignment="Center" />
             </StackPanel>
         </Border>

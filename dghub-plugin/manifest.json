@@ -1,0 +1,47 @@
+{
+  "id": "cun_link",
+  "name": "今天你寸了吗 · 联动",
+  "version": "1.0.0",
+  "sdk": "1",
+  "author": "chunithm-cun-sorter",
+  "description": "接收「今天你寸了吗」的 CHUNITHM 判定数据：打歌中 MISS / ATTACK 实时触发，结算命中「寸」规则时触发。",
+  "homepage": "https://github.com/Eric6286/chunithm-cun-sorter",
+  "entry": "main.py",
+  "capabilities": { "startup_check": true },
+  "config_schema": [
+    {
+      "section": "连接",
+      "fields": [
+        {
+          "key": "endpoint",
+          "type": "text",
+          "label": "cun 数据端点",
+          "default": "http://127.0.0.1:8890/events",
+          "description": "「今天你寸了吗」联动服务的 SSE 地址；在 cun 的「配置 → DGHub 联动」开启，端口默认 8890"
+        },
+        { "key": "debug", "type": "bool", "label": "调试日志", "default": false }
+      ]
+    },
+    {
+      "section": "实时触发（打歌中）",
+      "fields": [
+        { "key": "miss_enabled", "type": "bool", "label": "MISS 触发", "default": true },
+        { "key": "miss_strength", "type": "percent", "label": "MISS 强度", "default": 30 },
+        { "key": "attack_enabled", "type": "bool", "label": "ATTACK 触发", "default": false },
+        { "key": "attack_strength", "type": "percent", "label": "ATTACK 强度", "default": 15 },
+        { "key": "rt_duration", "type": "duration", "label": "持续时间", "default": 1.5 },
+        { "key": "rt_preset", "type": "preset", "label": "波形预设", "default": "CS2-受伤" },
+        { "key": "channel", "type": "channel", "label": "输出通道", "default": "both" }
+      ]
+    },
+    {
+      "section": "结算触发（寸了）",
+      "fields": [
+        { "key": "settle_enabled", "type": "bool", "label": "寸了触发", "default": true },
+        { "key": "settle_strength", "type": "percent", "label": "强度", "default": 50 },
+        { "key": "settle_duration", "type": "duration", "label": "持续时间", "default": 3.0 },
+        { "key": "settle_preset", "type": "preset", "label": "波形预设", "default": "CS2-受伤" }
+      ]
+    }
+  ]
+}

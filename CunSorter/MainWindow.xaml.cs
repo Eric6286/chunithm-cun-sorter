@@ -34,7 +34,7 @@ public sealed partial class MainWindow : Window
     private readonly DispatcherQueueTimer _gameTimer;
     private WatcherService? _watcher;
     private JudgeMemoryService? _judge;
-    private DgHubService? _dghub;
+    private LinkServerService? _link;
 
     public MainWindow()
     {
@@ -154,7 +154,7 @@ public sealed partial class MainWindow : Window
     {
         _watcher?.Stop();
         _judge?.Stop();
-        _dghub?.Stop();
+        _link?.Stop();
         try { TrayIcon.Dispose(); } catch { /* ignore */ }
         Application.Current.Exit();
     }
@@ -296,54 +296,44 @@ public sealed partial class MainWindow : Window
     private void OnStatus(string msg) => RunPage.SetWatchLabel("监视: " + msg);
 
     // ----------------------------- DGHub link --------------------------------
-    /// <summary>Start/stop the memory reader + DGHub client to match
+    /// <summary>Start/stop the memory reader + local event server to match
     /// Cfg.DgHub.Enabled. Called at startup and after every config save, so the
-    /// toggle on the config page takes effect immediately.</summary>
+    /// toggle on the config page takes effect immediately. The DGHub plugin
+    /// (dghub-plugin/) connects to the server and does the actual triggering.</summary>
     public void ApplyDgHubLink()
     {
         bool want = Cfg.DgHub.Enabled;
         if (want)
         {
-            if (_dghub is not { IsRunning: true })
+            if (_link is not { IsRunning: true })
             {
-                _dghub = new DgHubService(
-                    getCfg: () => ConfigService.LoadCached(),
-                    onStatus: s => DispatcherQueue.TryEnqueue(() => RunPage.SetLinkLabel("DGHub: " + s)),
-                    onLog: line => DispatcherQueue.TryEnqueue(() => RunPage.AppendLog(line)));
-                _dghub.Start();
+                _link = new LinkServerService(
+                    onStatus: s => DispatcherQueue.TryEnqueue(() => RunPage.SetLinkLabel("联动: " + s)));
+                _link.Start(Cfg.DgHub.Port);
             }
             if (_judge is not { IsRunning: true })
             {
                 _judge = new JudgeMemoryService(
                     getProcessName: () => ConfigService.LoadCached().GameProcess,
                     onStatus: s => DispatcherQueue.TryEnqueue(() => RunPage.SetJudgeLabel("判定: " + s)),
-                    onDelta: OnJudgeDelta,
-                    onSongEnd: OnSongEnd);
+                    onDelta: (_, _) => { },              // plugin derives realtime deltas itself
+                    onSongEnd: OnSongEnd,
+                    onTick: c => _link?.UpdateCounts(c));
                 _judge.Start();
             }
         }
         else
         {
-            _dghub?.Stop(); _dghub = null;
+            _link?.Stop(); _link = null;
             _judge?.Stop(); _judge = null;
-            RunPage.SetLinkLabel("DGHub: 未启用");
+            RunPage.SetLinkLabel("联动: 未启用");
             RunPage.SetJudgeLabel("判定: 未启用");
         }
     }
 
-    /// <summary>Judgment counters ticked up mid-song (memory-reader thread).</summary>
-    private void OnJudgeDelta(JudgeCounts prev, JudgeCounts cur)
-    {
-        var d = ConfigService.LoadCached().DgHub;
-        if (cur.Miss > prev.Miss && d.MissEnabled)
-            _dghub?.Trigger(d.MissPct, d.RealtimeDurationS, $"MISS ×{cur.Miss}");
-        else if (cur.Attack > prev.Attack && d.AttackEnabled)
-            _dghub?.Trigger(d.AttackPct, d.RealtimeDurationS, $"ATTACK ×{cur.Attack}");
-    }
-
     /// <summary>A song finished (memory freed / counters reset): derive the final
-    /// score from the judgment counts and run the user's 寸 rules on it
-    /// (memory-reader thread).</summary>
+    /// score from the judgment counts, run the user's 寸 rules on it and publish
+    /// the verdict to the plugin (memory-reader thread).</summary>
     private void OnSongEnd(JudgeCounts final)
     {
         var cfg = ConfigService.LoadCached();
@@ -351,21 +341,23 @@ public sealed partial class MainWindow : Window
         var rank = ConfigService.RankOf(score, cfg) ?? "?";
         var matches = ClassifierService.Classify(score, final.Attack, final.Miss, cfg)
             .Where(c => ClassifierService.CunKinds.Contains(c.Kind)).ToList();
+        var keys = string.Join("+", matches.Select(c => c.Key));
 
+        _link?.PublishSettle(new
+        {
+            @event = "settle",
+            cun = matches.Count > 0,
+            rules = keys,
+            score,
+            rank,
+            critical = final.Critical,
+            justice = final.Justice,
+            attack = final.Attack,
+            miss = final.Miss,
+        });
         var summary = $"得分≈{score} {rank} A{final.Attack}M{final.Miss}";
-        if (matches.Count > 0)
-        {
-            var keys = string.Join("+", matches.Select(c => c.Key));
-            if (cfg.DgHub.SettleEnabled)
-                _dghub?.Trigger(cfg.DgHub.SettlePct, cfg.DgHub.SettleDurationS, $"寸了！{keys} {summary}");
-            _dghub?.SendDisplayStatus($"寸了 {keys} | {summary}");
-            DispatcherQueue.TryEnqueue(() => RunPage.AppendLog($"🏁 结算 {summary}  [{keys}]"));
-        }
-        else
-        {
-            _dghub?.SendDisplayStatus($"结算 {summary}");
-            DispatcherQueue.TryEnqueue(() => RunPage.AppendLog($"🏁 结算 {summary}  [未寸]"));
-        }
+        DispatcherQueue.TryEnqueue(() =>
+            RunPage.AppendLog($"🏁 结算 {summary}  [{(matches.Count > 0 ? keys : "未寸")}]"));
     }
 
     private void UpdateGameLabel()
