@@ -39,6 +39,8 @@ public sealed partial class MainWindow : Window
     public MainWindow()
     {
         InitializeComponent();
+        // Double-click the tray icon = show, independent of the context menu.
+        TrayIcon.DoubleClickCommand = new RelayCommand(ShowNormal);
         Cfg = ConfigService.Load();
 
         _appWindow = GetAppWindow();
@@ -173,6 +175,15 @@ public sealed partial class MainWindow : Window
     }
 
     // ----------------------------- tray --------------------------------------
+    private sealed class RelayCommand : System.Windows.Input.ICommand
+    {
+        private readonly Action _run;
+        public RelayCommand(Action run) => _run = run;
+        public event EventHandler? CanExecuteChanged { add { } remove { } }
+        public bool CanExecute(object? p) => true;
+        public void Execute(object? p) => _run();
+    }
+
     private void Tray_Show(object sender, RoutedEventArgs e) => ShowNormal();
 
     private void ShowNormal()
