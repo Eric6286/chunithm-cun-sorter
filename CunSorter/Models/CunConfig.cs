@@ -49,6 +49,12 @@ public class CunConfig
 
     [JsonPropertyName("dghub")]
     public DgHubConfig DgHub { get; set; } = new();
+
+    // Path of the game's start.bat that the user hooked for auto-launch (empty =
+    // never configured). Whether the hook is currently active is read from the
+    // bat file itself, so the two can't drift apart.
+    [JsonPropertyName("start_bat")]
+    public string StartBat { get; set; } = "";
 }
 
 /// <summary>

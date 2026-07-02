@@ -22,6 +22,7 @@
             <RowDefinition Height="Auto" />
             <RowDefinition Height="Auto" />
             <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
             <RowDefinition Height="*" />
         </Grid.RowDefinitions>
 
@@ -67,9 +68,16 @@
         <CheckBox Grid.Row="4" x:Name="AutostartBox" Content="开机自启「今天你寸了吗」"
                   Click="Autostart_Click" />
 
-        <TextBlock Grid.Row="5" Text="最近命中" Style="{ThemeResource BodyStrongTextBlockStyle}" />
+        <StackPanel Grid.Row="5" Orientation="Horizontal" Spacing="10">
+            <CheckBox x:Name="StartBatBox" Content="接入 start.bat（启动游戏时自动启动本程序并开始监视）"
+                      Click="StartBat_Click" />
+            <TextBlock x:Name="StartBatLabel" VerticalAlignment="Center"
+                       Style="{ThemeResource CaptionTextBlockStyle}" Opacity="0.7" />
+        </StackPanel>
 
-        <TextBox Grid.Row="6" x:Name="LogBox" IsReadOnly="True" AcceptsReturn="True"
+        <TextBlock Grid.Row="6" Text="最近命中" Style="{ThemeResource BodyStrongTextBlockStyle}" />
+
+        <TextBox Grid.Row="7" x:Name="LogBox" IsReadOnly="True" AcceptsReturn="True"
                  TextWrapping="Wrap" ScrollViewer.VerticalScrollBarVisibility="Auto"
                  FontFamily="Consolas" />
     </Grid>

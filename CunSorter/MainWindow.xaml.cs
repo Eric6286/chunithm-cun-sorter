@@ -96,6 +96,39 @@ public sealed partial class MainWindow : Window
         }
     }
 
+    /// <summary>Show the system file picker filtered to the given extensions
+    /// (e.g. ".bat"). Returns the chosen path, or null if cancelled.</summary>
+    public async Task<string?> PickFileAsync(params string[] extensions)
+    {
+        try
+        {
+            var picker = new Windows.Storage.Pickers.FileOpenPicker();
+            foreach (var e in extensions) picker.FileTypeFilter.Add(e);
+            var hwnd = WinRT.Interop.WindowNative.GetWindowHandle(this);
+            WinRT.Interop.InitializeWithWindow.Initialize(picker, hwnd);
+            var file = await picker.PickSingleFileAsync();
+            return file?.Path;
+        }
+        catch (Exception e)
+        {
+            ShowInfo("选择文件失败", e.Message, InfoBarSeverity.Error);
+            return null;
+        }
+    }
+
+    /// <summary>start.bat launch (--watch): begin watching right away and drop to
+    /// the tray, so the game boot isn't covered by our window.</summary>
+    public void EnterWatchMode()
+    {
+        if (!WatcherRunning) ToggleWatch();
+        DispatcherQueue.TryEnqueue(() =>
+        {
+            _appWindow.Hide();
+            try { TrayIcon.ShowNotification(App.AppName, "已随游戏启动，后台监视中。"); }
+            catch { /* notifications are best-effort */ }
+        });
+    }
+
     private void Nav_SelectionChanged(NavigationView sender, NavigationViewSelectionChangedEventArgs args)
     {
         var tag = (args.SelectedItem as NavigationViewItem)?.Tag as string;
