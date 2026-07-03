@@ -402,7 +402,6 @@ public sealed partial class MainWindow : Window
     // the settle-time request stays as a backstop (deduped per song).
     private JudgeCounts _tickLast;
     private long _tickChangedAt;
-    private bool _freezeArmed;
 
     private void TrackFreeze(JudgeCounts c)
     {
@@ -411,12 +410,15 @@ public sealed partial class MainWindow : Window
         {
             _tickLast = c;
             _tickChangedAt = now;
-            _freezeArmed = true;
             return;
         }
-        if (_freezeArmed && c.Total >= 10 && now - _tickChangedAt >= 2500)
+        // Keep requesting for as long as the freeze lasts (not just once): a
+        // false start from a mid-song gap runs its 30s loop and times out, and
+        // the result screen may only show after that — the retry catches it.
+        // RequestCapture itself is cheap to spam: the busy flag rejects while a
+        // loop runs, and the per-song dedupe rejects after a success.
+        if (c.Total >= 10 && now - _tickChangedAt >= 2500)
         {
-            _freezeArmed = false;                        // once per freeze episode
             if (ConfigService.LoadCached().Capture.Enabled) _capture?.RequestCapture(c);
         }
     }
