@@ -42,6 +42,7 @@ public sealed class CaptureService
     private readonly Action<string, JudgeCounts> _onCaptured;   // (saved path, final counts)
     private readonly Action<string> _onStatus;
     private int _busy;
+    private JudgeCounts _lastCaptured;                  // dedupe: one shot per song
 
     public CaptureService(Func<CunConfig> getCfg,
         Action<string, JudgeCounts> onCaptured, Action<string> onStatus)
@@ -51,9 +52,13 @@ public sealed class CaptureService
         _onStatus = onStatus;
     }
 
-    /// <summary>Called on the song-end signal; one capture attempt at a time.</summary>
+    /// <summary>Called when the counters freeze at song end (result screen is up
+    /// while the counter block is still alive) and again, as a backstop, on the
+    /// settle signal. One attempt at a time; a song that was already archived
+    /// (same final counts) is skipped.</summary>
     public void RequestCapture(JudgeCounts final)
     {
+        if (final == _lastCaptured) return;
         if (Interlocked.CompareExchange(ref _busy, 1, 0) != 0) return;
         _ = Task.Run(async () =>
         {
@@ -74,11 +79,23 @@ public sealed class CaptureService
         var start = DateTime.UtcNow;
         var deadline = start.AddSeconds(Math.Max(5, cfg.Capture.TimeoutS));
         int best = -1;                                   // best signature score seen, for diagnostics
+        Bitmap? bestFrame = null;                        // kept so a timeout can dump it for analysis
+        try
+        {
         while (DateTime.UtcNow < deadline)
         {
             using (var frame = Grab(cfg.GameProcess))
             {
-                if (frame != null) best = Math.Max(best, SignatureScore(frame));
+                if (frame != null)
+                {
+                    int score = SignatureScore(frame);
+                    if (score > best)
+                    {
+                        best = score;
+                        bestFrame?.Dispose();
+                        bestFrame = (Bitmap)frame.Clone();
+                    }
+                }
                 if (frame != null && IsResultScreen(frame))
                 {
                     // The chrome is up but the score tally may still be rolling —
@@ -88,7 +105,8 @@ public sealed class CaptureService
                     if (settled != null && IsResultScreen(settled))
                     {
                         var path = SavePng(settled, cfg.ScreenshotsDir);
-                        Status($"已截取结算画面 {Path.GetFileName(path)}（曲终后 {(DateTime.UtcNow - start).TotalSeconds:F1}s）");
+                        _lastCaptured = final;
+                        Status($"已截取结算画面 {Path.GetFileName(path)}（触发后 {(DateTime.UtcNow - start).TotalSeconds:F1}s）");
                         try { _onCaptured(path, final); } catch { /* ignore */ }
                         return;
                     }
@@ -96,9 +114,29 @@ public sealed class CaptureService
             }
             await Task.Delay(PollMs);
         }
-        Status(best < 0
-            ? "未捕获：拿不到游戏画面（窗口不在？）"
-            : $"未捕获到结算画面（超时；最高指纹得分 {best}/{Signature.Length}）");
+        if (best < 0)
+        {
+            Status("未捕获：拿不到游戏画面（窗口不在？）");
+        }
+        else
+        {
+            // Dump the best frame so the near-miss can be analysed offline
+            // (which fingerprint points failed, and by how much).
+            string note = "";
+            try
+            {
+                var dir = Path.Combine(ConfigService.Here, "diag");
+                Directory.CreateDirectory(dir);
+                var dump = Path.Combine(dir,
+                    $"capture_{DateTime.Now:yyyyMMdd_HHmmss}_best{best}.png");
+                bestFrame!.Save(dump, ImageFormat.Png);
+                note = $"，最佳帧已存 diag\\{Path.GetFileName(dump)}";
+            }
+            catch { /* diagnostics only */ }
+            Status($"未捕获到结算画面（超时；最高指纹得分 {best}/{Signature.Length}{note}）");
+        }
+        }
+        finally { bestFrame?.Dispose(); }
     }
 
     private static string SavePng(Bitmap bmp, string dir)

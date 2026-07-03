@@ -383,13 +383,41 @@ public sealed partial class MainWindow : Window
                 onStatus: s => DispatcherQueue.TryEnqueue(() => RunPage.SetJudgeLabel("判定: " + s)),
                 onDelta: (_, _) => { },                  // plugin derives realtime deltas itself
                 onSongEnd: OnSongEnd,
-                onTick: c => _link?.UpdateCounts(c));
+                onTick: c => { _link?.UpdateCounts(c); TrackFreeze(c); });
             _judge.Start();
         }
         else if (!wantJudge && _judge != null)
         {
             _judge.Stop(); _judge = null;
             RunPage.SetJudgeLabel("判定: 未启用");
+        }
+    }
+
+    // Result-screen timing (observed live): the settlement screen shows while
+    // the counter block is still alive, frozen at the final values; the block is
+    // only freed when the player LEAVES the screen. So the settle signal comes
+    // too late for a screenshot — instead, counters frozen for a couple of
+    // seconds mid-PLAYING is the "result screen is up" trigger. The fingerprint
+    // check inside CaptureService rejects false starts (long note gaps), and
+    // the settle-time request stays as a backstop (deduped per song).
+    private JudgeCounts _tickLast;
+    private long _tickChangedAt;
+    private bool _freezeArmed;
+
+    private void TrackFreeze(JudgeCounts c)
+    {
+        var now = Environment.TickCount64;
+        if (c != _tickLast)
+        {
+            _tickLast = c;
+            _tickChangedAt = now;
+            _freezeArmed = true;
+            return;
+        }
+        if (_freezeArmed && c.Total >= 10 && now - _tickChangedAt >= 2500)
+        {
+            _freezeArmed = false;                        // once per freeze episode
+            if (ConfigService.LoadCached().Capture.Enabled) _capture?.RequestCapture(c);
         }
     }
 
