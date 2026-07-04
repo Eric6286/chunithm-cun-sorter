@@ -45,6 +45,7 @@
 
 - **Windows 10 1809+ / 11**，x64；游戏窗口 / 截图分辨率 **1920×1080** 最稳（其它分辨率按比例缩放）
 - **Tesseract OCR**（<https://github.com/UB-Mannheim/tesseract/wiki>）：**用截图 + OCR 路径时必需**——装到默认路径 `C:\Program Files\Tesseract-OCR\` 即可，或把含 `eng.traineddata` 的 `tessdata` 放 exe 同级 / 在配置里改 `tesseract_cmd`。**只用联动 + 自动截图的话，新成绩不需要它**（历史截图重扫仍需要）
+- **DGHub 主程序**（<http://www.dghub.top/>）：**仅 DGHub 联动需要**——DG-Lab 郊狼设备的联动主程序，从其「插件中心 → 外部插件」导入本项目的联动插件
 - *（仅从源码构建时）* **.NET 8 SDK**
 
 ## 🚀 快速开始
@@ -58,6 +59,7 @@
 > 截图目录默认自动取 `<安装目录上级>\screenshots`；不在那儿就在「配置 → 目录设置」浏览指定。
 
 ### DGHub 联动 + 自动截图（可选）
+> 需要先安装 **DGHub 主程序**（<http://www.dghub.top/>）并连好 DG-Lab 设备；波形预设也在 DGHub 里管理。
 1. 下载 Release 里的 **`cun_dghub_plugin_v1.3.zip`**，在 DGHub **插件中心 → 外部插件 → 导入 zip 包** 安装「今天你寸了吗 · 联动」并启用；触发开关 / 强度 / 波形预设（自动列出 DGHub 预设）/ 通道都在其插件配置页调，「启动检查」可看连接状态。
 2. cun 的 **配置 → DGHub 联动** 打开开关（默认端口 8890），**配置 → 自动截图** 按需打开，保存立即生效。
 3. 开打。打歌中吃 MISS 即触发；每首歌结算自动截图、按寸规则判定并归档——全程零 OCR。
@@ -189,10 +191,10 @@ dotnet publish CunSorter/CunSorter.csproj -c Release -r win-x64 --self-contained
 
 ## 📝 更新记录
 
-### v1.3（2026-07-03）
+### v1.3（2026-07-04）
 - ⚡ **新增 DGHub 联动**：内存只读判定计数（签名扫描，移植自 [Chuni2Api](https://github.com/iyxddw/Chuni2Api)），打歌中 **MISS / ATTACK** 实时触发波形，**结算按寸规则判定**（得分由判定数精确换算）命中即触发。
 - 🔌 配套 **DGHub 外部插件**（Release 附 `cun_dghub_plugin_*.zip`，导入即用）：触发开关 / 强度 / 波形预设 / 通道全在 DGHub 插件配置页，支持「启动检查」；cun 在本机 8890 提供 SSE 数据服务。
-- 📸 **新增自动截图**：判定数冻结（进入结算）即开始像素指纹识别，等分数滚完自动截取结算画面；判定数据直接入缓存，**新截图零 OCR**（指纹由 `tools/gen_result_signature.py` 从存量归档统计生成，实测打歌画面不误报）。
+- 📸 **新增自动截图**：判定数冻结（进入结算）即开始识别，等分数滚完自动截取成绩画面；判定数据直接入缓存，**新截图零 OCR**。成绩画面识别用**双重校验**——17 点 UI 骨架像素指纹（排除打歌 / 地图画面）+ 判定明细面板区域均色（排除曲终先出现、共享同款顶栏的 **CLEAR 过场**）；指纹由 `tools/gen_result_signature.py` 从存量归档统计生成，实机验证连续多首命中成绩图、不误截过场。
 - 🚀 **新增「接入 start.bat」**：一键注入自启动行，开游戏自动启动并开始监视（备份 / 可还原 / 单实例）。
 - 🐛 **修复**：窗口隐藏在托盘时右键菜单点了没反应（改用独立窗口承载菜单，另加双击图标显示主界面）；开启「达成」整理后归档到根 `AJ\`、`FC\` 的原图不再被扫描统计的问题（现只跳过带 `__` 标记的工具副本）。
 - 🖥️ 「配置」页新增 DGHub 联动 / 自动截图设置区；「运行」页新增联动状态与 start.bat 接入；结算与截图记录进「最近命中」与 `cun.log`。
@@ -211,7 +213,7 @@ dotnet publish CunSorter/CunSorter.csproj -c Release -r win-x64 --self-contained
 
 ## 🙏 致谢
 
-- [Chuni2Api](https://github.com/iyxddw/Chuni2Api)（内存签名扫描方案）· DGHub（外部插件协议）
+- [Chuni2Api](https://github.com/iyxddw/Chuni2Api)（内存签名扫描方案）· [DGHub](http://www.dghub.top/)（外部插件协议）
 - [Windows App SDK / WinUI 3](https://learn.microsoft.com/windows/apps/winui/winui3/) · [H.NotifyIcon](https://github.com/HavenDV/H.NotifyIcon) · [Tesseract .NET](https://github.com/charlesw/tesseract) · [Tesseract OCR](https://github.com/tesseract-ocr/tesseract)
 
 ## 📄 许可
