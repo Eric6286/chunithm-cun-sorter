@@ -93,7 +93,7 @@
             <Border Style="{StaticResource RowCard}">
                 <StackPanel Spacing="12">
                     <TextBlock Style="{ThemeResource CaptionTextBlockStyle}" Opacity="0.7" TextWrapping="Wrap"
-                               Text="由本程序在每首歌结算时自动截取游戏画面存入截图目录，识别数据直接取自内存（新截图不再需要 OCR）；开启后可停用原来的外部截图工具。依赖游戏内存读取——本开关或上面的 DGHub 联动任一开启即生效。历史截图的重扫仍走 OCR。" />
+                               Text="由本程序在每首歌结算时自动截取游戏画面存入截图目录，识别数据直接取自内存（新截图不再需要 OCR）；开启后可停用原来的外部截图工具。依赖游戏内存读取，本开关或上面的 DGHub 联动任一开启即生效。历史截图的重扫仍走 OCR。" />
                     <StackPanel Orientation="Horizontal" Spacing="14">
                         <ToggleSwitch x:Name="CapEnabledSw" OnContent="" OffContent="" MinWidth="0" />
                         <TextBlock Text="启用自动截图" VerticalAlignment="Center"
