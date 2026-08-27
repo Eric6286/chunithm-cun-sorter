@@ -1,20 +1,21 @@
 name: Build
 
-# 在 Windows runner 上编译 WinUI 3 / .NET 8 版,验证 C#/XAML 能否通过编译。
-# (真机的 OCR 识别效果 / Mica / 托盘运行时表现仍需在本机手动确认。)
+# 在 Windows runner 上跑测试并打一次 exe，验证代码和打包配置都还是好的。
+# （OCR 的真实识别效果、托盘、内存读取仍需在本机手动确认。）
 
 on:
   push:
     branches: ["**"]
     paths:
-      - "CunSorter/**"
-      - "CunSorter.sln"
+      - "core/**"
+      - "ui/**"
+      - "tests/**"
+      - "packaging/**"
+      - "main.py"
+      - "cli.py"
+      - "requirements.txt"
       - ".github/workflows/build.yml"
   pull_request:
-    paths:
-      - "CunSorter/**"
-      - "CunSorter.sln"
-      - ".github/workflows/build.yml"
   workflow_dispatch:
 
 jobs:
@@ -25,13 +26,19 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v6
 
-      - name: Setup .NET 8
-        uses: actions/setup-dotnet@v5
+      - name: Setup Python
+        uses: actions/setup-python@v5
         with:
-          dotnet-version: "8.0.x"
+          python-version: "3.11"
+          cache: pip
 
-      - name: Restore
-        run: dotnet restore CunSorter/CunSorter.csproj -r win-x64
+      - name: Install dependencies
+        run: python -m pip install -r requirements.txt
 
-      - name: Build (Release, x64, self-contained)
-        run: dotnet build CunSorter/CunSorter.csproj -c Release -p:Platform=x64 -r win-x64 --no-restore
+      - name: Tests
+        run: python -m pytest tests -q
+
+      # runner 上没有 Inno Setup，只打 exe。跑冒烟：打包成功不等于跑得起来，
+      # 少一个隐藏依赖就是双击没反应，这一步能当场发现。
+      - name: Build exe (with startup smoke test)
+        run: python packaging/build.py --skip-tests --no-installer

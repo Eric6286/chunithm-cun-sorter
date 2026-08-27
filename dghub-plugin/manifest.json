@@ -5,7 +5,7 @@
   "sdk": "1",
   "author": "chunithm-cun-sorter",
   "description": "接收「今天你寸了吗」的 CHUNITHM 判定数据：打歌中 MISS / ATTACK 实时触发，结算命中「寸」规则时触发。",
-  "homepage": "https://github.com/Eric6286/chunithm-cun-sorter",
+  "homepage": "https://github.com/ErikaAlk/chunithm-cun-sorter",
   "entry": "main.py",
   "capabilities": { "startup_check": true },
   "config_schema": [

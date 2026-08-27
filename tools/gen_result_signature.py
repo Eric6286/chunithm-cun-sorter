@@ -1,11 +1,14 @@
-# 从存量归档统计生成「结算成绩画面」像素指纹（CaptureService 用）。
+# 从存量归档统计生成「结算成绩画面」像素指纹，产物填进 core/capture.py 的 SIGNATURE。
 #
-# 正样本：screenshots 下 AJ / FC / 普通 三棵树的归档原图（真·成绩画面）。
-# 负样本：--neg 传入的帧（CLEAR 过场、地图推进、打歌画面等）——成绩画面
-# 与 CLEAR 过场共享顶栏/铭牌等 chrome，指纹点必须能把两者分开，所以只保留
-# 「跨全部正样本恒定 且 与每一张负样本都显著不同」的点。
+# 正样本：截图目录下 AJ / FC / 普通 三棵树的归档原图（真·成绩画面）。
+# 负样本：--neg 传入的帧（CLEAR 过场、地图推进、打歌画面等）。成绩画面与 CLEAR
+# 过场共享顶栏/铭牌等 chrome，指纹点必须能把两者分开，所以只保留「跨全部正样本
+# 恒定 且 与每一张负样本都显著不同」的点。
 #
-# 用法: python gen_result_signature.py [--neg 负样本1.png ...] [--exclude 文件名子串 ...]
+# 开发用的一次性脚本，需要 numpy（不在 requirements.txt 里，用时临时装）。
+#
+# 用法: python tools/gen_result_signature.py [--root 截图目录]
+#           [--neg 负样本1.png ...] [--exclude 文件名子串 ...]
 import argparse
 import json
 from pathlib import Path
@@ -17,13 +20,23 @@ ROOT = Path(r"C:\Chuni\CHUNITHM\bin\screenshots")
 STEP = 8            # 采样网格步长
 TOL = 6             # 稳定判定：跨全部正样本 max-min ≤ TOL（每通道）
 NEG_MARGIN = 60     # 判别判定：与每张负样本的通道最大差 ≥ NEG_MARGIN
-RUNTIME_TOL = 24    # 运行时匹配容差（与 CaptureService.MatchTol 一致）
+RUNTIME_TOL = 24    # 运行时匹配容差（与 core/capture.py 的 MATCH_TOL 一致）
 PICKS = 24
 
 parser = argparse.ArgumentParser()
+parser.add_argument("--root", default="", help="截图目录；不给就读当前配置")
 parser.add_argument("--neg", nargs="*", default=[], help="负样本帧（CLEAR 过场 / 地图 / 打歌）")
 parser.add_argument("--exclude", nargs="*", default=[], help="从正样本剔除的文件名子串")
 args = parser.parse_args()
+
+if args.root:
+    ROOT = Path(args.root)
+else:
+    import sys
+    sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+    from core import config as _config
+    ROOT = Path(_config.load().screenshots_dir)
+print(f"截图目录: {ROOT}")
 
 W, H = 1920, 1080
 

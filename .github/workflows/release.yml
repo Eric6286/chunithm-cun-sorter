@@ -1,8 +1,7 @@
 name: Release
 
-# Tag-triggered release: on pushing a v* tag, build the WinUI 3 app on a Windows
-# runner (self-contained win-x64, no .NET install needed), package it as the
-# deployable `cun/` folder, and publish a GitHub Release with the zip attached.
+# 推 v* tag 触发：在 Windows runner 上跑测试、打 exe、出安装包，
+# 连同 DGHub 插件 zip 一起发 GitHub Release。
 
 on:
   push:
@@ -10,9 +9,9 @@ on:
   workflow_dispatch:
     inputs:
       tag:
-        description: "Tag name to build (e.g. v1.1)"
+        description: "Tag name to build (e.g. v2.0)"
         required: true
-        default: "v1.1"
+        default: "v2.0"
 
 permissions:
   contents: write
@@ -25,10 +24,17 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v6
 
-      - name: Setup .NET 8
-        uses: actions/setup-dotnet@v5
+      - name: Setup Python
+        uses: actions/setup-python@v5
         with:
-          dotnet-version: "8.0.x"
+          python-version: "3.11"
+          cache: pip
+
+      - name: Install dependencies
+        run: python -m pip install -r requirements.txt
+
+      - name: Install Inno Setup
+        run: choco install innosetup --no-progress -y
 
       - name: Resolve version
         id: ver
@@ -36,29 +42,22 @@ jobs:
         run: |
           $tag = if ("${{ github.ref_type }}" -eq "tag") { "${{ github.ref_name }}" } else { "${{ github.event.inputs.tag }}" }
           "tag=$tag" | Out-File -FilePath $env:GITHUB_OUTPUT -Append
+          # 版本号的唯一真源是 core/version.py，这里读回来对齐产物名
+          $v = (Select-String -Path core/version.py -Pattern '__version__ = "([^"]+)"').Matches[0].Groups[1].Value
+          "version=$v" | Out-File -FilePath $env:GITHUB_OUTPUT -Append
 
-      - name: Publish (win-x64, self-contained)
-        run: >-
-          dotnet publish CunSorter/CunSorter.csproj
-          -c Release -r win-x64 --self-contained
-          -p:Platform=x64 -p:WindowsAppSDKSelfContained=true
-          -o publish_out
+      - name: Build installer
+        run: python packaging/build.py --skip-tests
 
-      - name: Package cun/ folder
+      - name: Package DGHub plugin
         id: pack
         shell: pwsh
         run: |
-          New-Item -ItemType Directory -Force -Path dist/cun/app | Out-Null
-          Copy-Item publish_out/* dist/cun/app -Recurse -Force
-          # Ship a seed config at the cun/ level (data_dir reads exe's parent).
-          Copy-Item cun_config.json dist/cun/cun_config.json -Force
-          $zip = "chunithm-cun-sorter_${{ steps.ver.outputs.tag }}_win64.zip"
-          Compress-Archive -Path dist/cun -DestinationPath $zip -Force
-          "zip=$zip" | Out-File -FilePath $env:GITHUB_OUTPUT -Append
-          # DGHub plugin: zip the folder as-is for the plugin center's zip import.
           $plugin = "cun_dghub_plugin_${{ steps.ver.outputs.tag }}.zip"
           Compress-Archive -Path dghub-plugin/* -DestinationPath $plugin -Force
           "plugin=$plugin" | Out-File -FilePath $env:GITHUB_OUTPUT -Append
+          $setup = (Get-ChildItem dist_installer/*.exe | Select-Object -First 1).FullName
+          "setup=$setup" | Out-File -FilePath $env:GITHUB_OUTPUT -Append
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v3
@@ -66,24 +65,26 @@ jobs:
           tag_name: ${{ steps.ver.outputs.tag }}
           name: 今天你寸了吗 ${{ steps.ver.outputs.tag }}
           body: |
-            ## 今天你寸了吗 ${{ steps.ver.outputs.tag }} · WinUI 3 / .NET 8
+            ## 今天你寸了吗 ${{ steps.ver.outputs.tag }}
 
-            CHUNITHM「寸」成绩自动识别与归档工具。本版为 **WinUI 3 + .NET 8** 重写版（Fluent 2 + Win11 Mica），与 Python 版功能等价、配置 / 缓存（`cun_config.json` / `cun_ocr_cache.json`）互通。
+            CHUNITHM「寸」成绩自动识别与归档工具。Python + PySide6，自包含安装包，**不需要装 Python**。
 
-            ### 下载即用（免装 .NET / Python）
-            1. 安装 **Tesseract OCR**：<https://github.com/UB-Mannheim/tesseract/wiki>
-            2. 下载下方 **`chunithm-cun-sorter_${{ steps.ver.outputs.tag }}_win64.zip`**，解压得到 `cun` 文件夹，放到 **`<CHUNITHM>\bin\`**（与 `screenshots` 同级，最终为 `<CHUNITHM>\bin\cun\`）。
-            3. 双击 **`app\今天你寸了吗.exe`** 运行。游戏照常用 `start.bat` 启动；让程序常驻即可自动归档。
+            ### 安装
+            1. 下载下方的安装程序，双击。
+            2. 安装向导会问 **CHUNITHM 装在哪**：选中游戏根目录（里面有 `bin` 文件夹的那一层）。它会先猜一个常见位置，不对就点「浏览」；留空的话第一次打开程序时还会再问。
+            3. 装完打开，「配置」页添加判定规则、按需开启整理，保存。
+
+            程序装在 `%LOCALAPPDATA%\Programs\今天你寸了吗\`，**不需要**放进游戏目录；配置和统计数据在 `%LOCALAPPDATA%\ChunithmCunSorter\`。
 
             ### 环境
             - Windows 10 1809+ / 11，x64
             - 截图分辨率 1920×1080
-            - 需安装 Tesseract OCR（程序自动使用其 `tessdata`）
-
-            本版为自包含构建，**无需安装 .NET 运行时**。详见仓库 [README](https://github.com/ErikaAlk/chunithm-cun-sorter#readme)。
+            - 走截图 + OCR 这条路需要 [Tesseract OCR](https://github.com/UB-Mannheim/tesseract/wiki)；只用联动 + 自动截图的话新成绩不需要它
 
             ### DGHub 联动（可选）
-            下载 **`cun_dghub_plugin_${{ steps.ver.outputs.tag }}.zip`**，在 DGHub「插件中心 → 外部插件 → 导入 zip 包」安装；波形 / 强度在 DGHub 插件配置页调节，cun 侧只需在「配置 → DGHub 联动」开启。
+            下载 `cun_dghub_plugin_${{ steps.ver.outputs.tag }}.zip`，在 DGHub「插件中心 → 外部插件 → 导入 zip 包」安装；波形 / 强度在 DGHub 插件配置页调节，cun 侧只需在「配置 → DGHub 联动」开启。
+
+            详见仓库 [README](https://github.com/ErikaAlk/chunithm-cun-sorter#readme) 与[更新记录](https://github.com/ErikaAlk/chunithm-cun-sorter/blob/main/更新记录.md)。
           files: |
-            ${{ steps.pack.outputs.zip }}
+            ${{ steps.pack.outputs.setup }}
             ${{ steps.pack.outputs.plugin }}

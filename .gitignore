@@ -1,33 +1,33 @@
-# .NET / WinUI 3 build output
-[Bb]in/
-[Oo]bj/
-[Dd]ebug/
-[Rr]elease/
-*.user
-publish_out/
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# 打包产物
+build/
 dist/
+dist_installer/
+packaging/file_version.txt
 
-# Rider / VS
-.vs/
-.idea/
-
-# Publish / packaging
-[Pp]ublish/
-AppPackages/
-BundleArtifacts/
-*.appx
-*.msix
-*.appxbundle
-
-# runtime data (machine-specific; do not commit)
+# 运行时数据（跟机器走，不入库）
 cun.log
 cun_ocr_cache.json
+cun_config.json
 cun_config.local.json
+install.ini
+diag/
+.testdata/
 
-# os
+# 编辑器
+.vs/
+.idea/
+*.user
+
+# 系统
 Thumbs.db
 desktop.ini
 .DS_Store
-
-__pycache__/
-diag/
