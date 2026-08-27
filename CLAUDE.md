@@ -118,5 +118,8 @@ GitHub Release（安装包 + DGHub 插件 zip）。
 
 - **DGHub 插件**在 `dghub-plugin/`，发版自动打 zip。它通过 `http://127.0.0.1:8890/events`
   读 SSE，用 `urllib.request.urlopen` 逐行读。改 `core/link_server.py` 的响应格式前先看它。
-- **ChuniOptionManager** 共用一套 WinUI 约定，但那个项目**还没**做这次的解耦，
-  仍然必须留在 `option` 目录里。
+- **ChuniOptionManager** 2026-08-27 同一天也从 WinUI 重写成了 Python + PySide6、
+  搬到了 `~\Workspace\code\ChuniOptionManager`。两个项目现在是同一套形态
+  （PySide6 + PyInstaller + Inno Setup、装到 `%LOCALAPPDATA%`、目标目录记在配置里），
+  但**各自独立**，没有共享代码。游戏目录里 `bin\option\ChuniOptionManager\` 那份
+  是搬家前的旧副本。
