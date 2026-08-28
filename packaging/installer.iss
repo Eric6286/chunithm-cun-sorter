@@ -1,4 +1,4 @@
-﻿; 「今天你寸了吗」安装器（Inno Setup 6）
+﻿; 「寸录」安装器（Inno Setup 6）
 ;
 ; 由 packaging\build.py 调用，版本号通过 /DAppVersion= 传进来——
 ; 版本的唯一真源是 core\version.py，别在这里再写一份。
@@ -7,8 +7,8 @@
 ;
 ; 这个文件必须存成 UTF-8 with BOM，否则 ISCC 按 ANSI 读，中文全是乱码。
 
-#define AppName "今天你寸了吗"
-#define AppExeName "今天你寸了吗.exe"
+#define AppName "寸录"
+#define AppExeName "寸录.exe"
 ; 安装包文件名不带中文和空格，复制到哪儿都不用加引号
 #define AppFileBase "chunithm-cun-sorter"
 #define AppPublisher "ErikaAlk"
@@ -16,9 +16,9 @@
 #ifndef AppVersion
   #define AppVersion "0.0.0"
 #endif
-; 真源是 coreersion.py 的 APP_USER_MODEL_ID，由 build.py 传进来
+; 真源是 core\version.py 的 APP_USER_MODEL_ID，由 build.py 传进来
 #ifndef AppUserModelID
-  #define AppUserModelID "JinTianNiCunLeMa.App"
+  #define AppUserModelID "CunLu.App"
 #endif
 #ifndef SourceDir
   #define SourceDir "..\dist\cun"
@@ -65,6 +65,14 @@ Name: "cn"; MessagesFile: "compiler:Default.isl"
 
 [Tasks]
 Name: "desktopicon"; Description: "创建桌面快捷方式"; GroupDescription: "快捷方式："
+
+; v2.0.3 改名之前装的是「今天你寸了吗」。AppId 没变，所以是原地覆盖升级，
+; 但 exe 文件名和快捷方式名都跟着名字变了——不点名删掉，旧 exe 会留在安装
+; 目录里，开始菜单和桌面上还剩一份指向它的旧快捷方式，看着像装了两个程序。
+[InstallDelete]
+Type: files; Name: "{app}\今天你寸了吗.exe"
+Type: files; Name: "{autoprograms}\今天你寸了吗.lnk"
+Type: files; Name: "{autodesktop}\今天你寸了吗.lnk"
 
 [Files]
 Source: "{#SourceDir}\*"; DestDir: "{app}"; \

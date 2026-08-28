@@ -136,7 +136,7 @@ class LinkServer:
         self._status(f"插件已连接 ×{n}" if n > 0 else "插件已断开，等待连接")
 
 
-_HELP = ("今天你寸了吗 · DGHub 联动服务\n"
+_HELP = ("寸录 · DGHub 联动服务\n"
          "/events = SSE 判定流\n"
          "/data = 当前快照\n")
 

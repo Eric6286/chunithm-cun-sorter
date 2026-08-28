@@ -294,7 +294,7 @@ class ConfigPage(QWidget):
 
         self._body.addWidget(card)
         self._note("开启后从游戏内存实时读取判定计数（只读，不修改游戏），在本机提供数据服务，"
-                   "由 DGHub 里的「今天你寸了吗 · 联动」插件读取并触发波形。"
+                   "由 DGHub 里的「寸录 · 联动」插件读取并触发波形。"
                    "MISS / ATTACK / 结算的强度、波形预设、通道都在 DGHub 的插件配置页里调；"
                    "结算是否「寸了」按上面的判定规则算。保存后立即生效。")
 

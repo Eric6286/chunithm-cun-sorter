@@ -1,4 +1,4 @@
-"""DGHub 插件 — 「今天你寸了吗」联动。
+"""DGHub 插件 — 「寸录」联动。
 
 连接 cun 的本地 SSE 数据端点（cun「配置 → DGHub 联动」开启，默认
 http://127.0.0.1:8890/events），两类事件：
@@ -134,7 +134,7 @@ async def main() -> None:
                          "detail": "已连接 DGHub"},
                         {"key": "cun", "title": "cun 数据服务", "state": source_state,
                          "detail": source_detail,
-                         "hint": "打开「今天你寸了吗」，在 配置 → DGHub 联动 开启并保存"},
+                         "hint": "打开「寸录」，在 配置 → DGHub 联动 开启并保存"},
                     ],
                 },
             },

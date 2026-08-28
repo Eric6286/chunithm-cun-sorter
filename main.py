@@ -31,6 +31,9 @@ def main(argv: list[str] | None = None) -> int:
 
     winapi.set_app_user_model_id(APP_USER_MODEL_ID)
 
+    from core import autostart
+    autostart.migrate_legacy()                      # 改名前设过的自启项，搬到新名字下
+
     from PySide6.QtWidgets import QApplication
 
     from ui import theme

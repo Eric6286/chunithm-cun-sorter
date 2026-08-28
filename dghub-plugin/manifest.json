@@ -1,10 +1,10 @@
 {
   "id": "cun_link",
-  "name": "今天你寸了吗 · 联动",
+  "name": "寸录 · 联动",
   "version": "1.0.0",
   "sdk": "1",
   "author": "chunithm-cun-sorter",
-  "description": "接收「今天你寸了吗」的 CHUNITHM 判定数据：打歌中 MISS / ATTACK 实时触发，结算命中「寸」规则时触发。",
+  "description": "接收「寸录」的 CHUNITHM 判定数据：打歌中 MISS / ATTACK 实时触发，结算命中「寸」规则时触发。",
   "homepage": "https://github.com/ErikaAlk/chunithm-cun-sorter",
   "entry": "main.py",
   "capabilities": { "startup_check": true },
@@ -17,7 +17,7 @@
           "type": "text",
           "label": "cun 数据端点",
           "default": "http://127.0.0.1:8890/events",
-          "description": "「今天你寸了吗」联动服务的 SSE 地址；在 cun 的「配置 → DGHub 联动」开启，端口默认 8890"
+          "description": "「寸录」联动服务的 SSE 地址；在 cun 的「配置 → DGHub 联动」开启，端口默认 8890"
         },
         { "key": "debug", "type": "bool", "label": "调试日志", "default": false }
       ]

@@ -63,9 +63,9 @@ jobs:
         uses: softprops/action-gh-release@v3
         with:
           tag_name: ${{ steps.ver.outputs.tag }}
-          name: 今天你寸了吗 ${{ steps.ver.outputs.tag }}
+          name: 寸录 ${{ steps.ver.outputs.tag }}
           body: |
-            ## 今天你寸了吗 ${{ steps.ver.outputs.tag }}
+            ## 寸录 ${{ steps.ver.outputs.tag }}
 
             CHUNITHM「寸」成绩自动识别与归档工具。Python + PySide6，自包含安装包，**不需要装 Python**。
 
@@ -74,7 +74,7 @@ jobs:
             2. 安装向导会问 **CHUNITHM 装在哪**：选中游戏根目录（里面有 `bin` 文件夹的那一层）。它会先猜一个常见位置，不对就点「浏览」；留空的话第一次打开程序时还会再问。
             3. 装完打开，「配置」页添加判定规则、按需开启整理，保存。
 
-            程序装在 `%LOCALAPPDATA%\Programs\今天你寸了吗\`，**不需要**放进游戏目录；配置和统计数据在 `%LOCALAPPDATA%\ChunithmCunSorter\`。
+            程序装在 `%LOCALAPPDATA%\Programs\寸录\`，**不需要**放进游戏目录；配置和统计数据在 `%LOCALAPPDATA%\ChunithmCunSorter\`。
 
             ### 环境
             - Windows 10 1809+ / 11，x64

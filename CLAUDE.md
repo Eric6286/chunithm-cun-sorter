@@ -1,6 +1,6 @@
 # CLAUDE.md
 
-Claude 在本仓库（今天你寸了吗 / chunithm-cun-sorter）工作时的约定与速查。
+Claude 在本仓库（寸录 / chunithm-cun-sorter）工作时的约定与速查。
 人看的现状和用法在 [README.md](README.md)。
 
 ## 约定（必须遵守）
@@ -8,8 +8,9 @@ Claude 在本仓库（今天你寸了吗 / chunithm-cun-sorter）工作时的约
 - **README 同步**：每次做了功能 / 行为 / 配置项 / 命令 / 版本上的改动，都要在**同一次改动**里
   更新 `README.md` 的相应小节（功能特性、界面说明、判定与整理、`cun_config.json` 配置表、
   版本号、FAQ 等），并在 [更新记录.md](更新记录.md) 里补一条带日期和版本号的条目。
-- **版本号只有一处真源**：`core/version.py` 的 `__version__`。exe 的版本资源、安装包文件名、
-  控制面板里的卸载项版本全从那里读，别在别处再写一份。
+- **版本号和应用名只有一处真源**：`core/version.py`。`__version__` 供 exe 的版本资源、
+  安装包文件名、控制面板里的卸载项；`APP_NAME` 供窗口标题、托盘、exe 文件名、快捷方式、
+  自启注册表值名。别在别处再写一份。
 - 发版时一并更新 README 里的版本号与安装包文件名。
 
 ## 这是什么
@@ -86,6 +87,13 @@ core/winapi.py     ctypes 封装：进程 / 窗口 / 抓帧 / 单实例 / DPI
 
 ## 会浪费半小时的坑
 
+- **改 `APP_NAME` 要连带清两处以名字为键的旧记录**，否则「看着正常，实际失效」：
+  开机自启的注册表值名（`core/autostart.py` 的 `migrate_legacy()`，从
+  `version.LEGACY_APP_NAMES` 取旧名）、以及安装器里的旧 exe 和旧 `.lnk`
+  （`installer.iss` 的 `[InstallDelete]`）。改名时往 `LEGACY_APP_NAMES` 补一条、
+  往 `[InstallDelete]` 补三行。`APP_SLUG` / 数据目录 / `AppId` / 单实例互斥体名
+  / start.bat 的标记全都**不要**跟着改——那几样一动，老用户的配置和统计就接不上了。
+
 - **ctypes 的句柄参数必须写 `argtypes`/`restype`。** 默认按 `c_int` 传，64 位下
   `HANDLE`/`HWND`/`HDC` 被截成低 32 位，表现是「调用失败但错误码看着正常」。
   `core/winapi.py` 里 `_declare()` 集中写死了所有签名，加新 API 要一起加。
@@ -117,7 +125,7 @@ core/winapi.py     ctypes 封装：进程 / 窗口 / 抓帧 / 单实例 / DPI
 
 | | 位置 |
 |---|---|
-| 程序 | `%LOCALAPPDATA%\Programs\今天你寸了吗\`（安装器默认，装到用户目录不弹 UAC） |
+| 程序 | `%LOCALAPPDATA%\Programs\寸录\`（安装器默认，装到用户目录不弹 UAC） |
 | 配置 / 缓存 / 日志 / 诊断图 | `%LOCALAPPDATA%\ChunithmCunSorter\` |
 | 游戏目录 | 记在配置的 `game_root`，安装向导或首次运行向导里选 |
 
