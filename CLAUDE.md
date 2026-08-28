@@ -71,6 +71,14 @@ core/winapi.py     ctypes 封装：进程 / 窗口 / 抓帧 / 单实例 / DPI
    生产环境就是这么截错的。→ `test_the_chrome_alone_is_not_enough_to_be_a_result_screen`
 6. **内存读取只读。** `ReadProcessMemory` / `VirtualQueryEx`，不写、不注入、不 hook。
 7. **后台线程的回调一律通过 Qt 信号回界面线程。** 直接从工作线程碰部件是未定义行为。
+8. **字号一律按像素给**（`setPixelSize` / QSS 的 `px`）。`ui/theme.py` 那张 HIG 字体样式表
+   （13 / 11 / 10 / 22）是**像素**值——macOS 上 1pt 就是 1px，Qt 在 Windows 上按 96 DPI 换算，
+   写 `pt` 会让 13 变成 17，整屏字大三分之一、行还会被挤塌（v2.0 就是这样）。
+9. **Mica 要求窗口自己不画底色。** 材质是 DWM 铺在窗口**后面**的，窗口那层像素不透明就等于
+   把它整个盖住，看上去毫无变化。所以 `stylesheet(mica=True)` 里 `QMainWindow` 和侧栏是
+   `transparent`，其余各层半透明。两条连带的约束：`WA_TranslucentBackground` 必须在 `show()`
+   **之前**设，之后设不生效；而材质一旦没铺上（`enable_mica` 返回 False），底色必须换回不透明
+   那套，否则是一片全黑——`_after_shown` 里有这条回退，别删。
 
 ## 会浪费半小时的坑
 
@@ -89,6 +97,17 @@ core/winapi.py     ctypes 封装：进程 / 窗口 / 抓帧 / 单实例 / DPI
 - **别在仓库根放 `cun_config.json`。** 源码运行时 `portable_dir()` 会往上找到它，
   整个程序误判成便携部署，截图目录被推到仓库旁边去。`_fill_paths` 里有一道守卫，别拿掉。
 - **`installer.iss` 必须存成 UTF-8 with BOM**，否则 ISCC 按 ANSI 读，中文全是乱码。
+- **别拿 `setMinimumHeight` 给一行定高。** Qt 的 `qSmartMinSize` 里显式设过的最小高度会
+  **顶掉**布局算出来的那个，于是空间一紧，这一行会被压到比内容还矮、子部件叠在一起。
+  地板要加在里面的标签上，行本身用纵向 `Fixed`（`ui/widgets.py` 的 `Row`）。
+- **卡片行里的副标题不能用会换行的 QLabel。** 换行标签的高度取决于宽度，窗口一窄就悄悄折成
+  两三行，把整行顶高、连累同一张卡片里别的行。用 `widgets.ElidedLabel`（不换行，放不下从
+  中间省略）。同理，会换行的标签放进 `QHBoxLayout` 只拿得到自己 sizeHint 那么宽，右边空着
+  也不用——「统计」页顶部那行就这么折过。
+- **`QComboBox::drop-down` 一styled，Windows 样式就不画箭头了**，下拉框看着和只读输入框
+  一模一样。QSS 里拿边框拼三角在 Qt 里会画成一个实心方块。箭头是 `widgets.Combo` 在
+  `paintEvent` 里自己描的，应用内的下拉框都要用这个类。
+- **每个页面都要套滚动容器。** 不套的话窗口一矮，布局会去压每张卡片，压到比内容还矮就糊了。
 
 ## 数据落在哪
 

@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""用到的那点 Win32：进程、优先级、窗口、抓帧、单实例、深色标题栏。
+"""用到的那点 Win32：进程、优先级、窗口、抓帧、单实例、深色标题栏、Mica。
 
 全走 ctypes，不引 pywin32 / psutil / mss——这个程序要打成安装包分发，
 少一个二进制依赖就少一类「装上跑不起来」。
@@ -40,6 +40,14 @@ SRCCOPY = 0x00CC0020
 BI_RGB = 0
 DIB_RGB_COLORS = 0
 DWMWA_USE_IMMERSIVE_DARK_MODE = 20      # Win10 20H1+ / Win11
+DWMWA_SYSTEMBACKDROP_TYPE = 38          # Win11 22H2（22621）+
+DWMWA_MICA_EFFECT = 1029                # Win11 21H2（22000）上的未公开前身
+#: DWM_SYSTEMBACKDROP_TYPE 里的 DWMSBT_MAINWINDOW，就是 Mica
+DWMSBT_MAINWINDOW = 2
+#: 支持 DWMWA_SYSTEMBACKDROP_TYPE 的最低内部版本号
+_BUILD_BACKDROP = 22621
+#: Windows 11 的起始内部版本号
+_BUILD_WIN11 = 22000
 
 
 class PROCESSENTRY32W(ctypes.Structure):
@@ -287,6 +295,73 @@ def enable_dark_titlebar(hwnd: int) -> None:
             ctypes.byref(on), ctypes.sizeof(on))
     except (OSError, AttributeError):
         pass
+
+
+def windows_build() -> int:
+    """当前系统的内部版本号（Win11 21H2 是 22000）。拿不到就返回 0。
+
+    别用 ``sys.getwindowsversion()``：没在清单里声明兼容性的进程会被
+    兼容性垫片糊住，Win11 上读回来是 6.2（Win8）。``RtlGetVersion`` 不受这层影响。
+    """
+    if not _IS_WINDOWS:
+        return 0
+
+    class _OSVERSIONINFOW(ctypes.Structure):
+        _fields_ = [("dwOSVersionInfoSize", wintypes.ULONG),
+                    ("dwMajorVersion", wintypes.ULONG),
+                    ("dwMinorVersion", wintypes.ULONG),
+                    ("dwBuildNumber", wintypes.ULONG),
+                    ("dwPlatformId", wintypes.ULONG),
+                    ("szCSDVersion", wintypes.WCHAR * 128)]
+
+    try:
+        ntdll = ctypes.WinDLL("ntdll")
+        ntdll.RtlGetVersion.argtypes = [ctypes.POINTER(_OSVERSIONINFOW)]
+        ntdll.RtlGetVersion.restype = ctypes.c_long
+        info = _OSVERSIONINFOW()
+        info.dwOSVersionInfoSize = ctypes.sizeof(info)
+        if ntdll.RtlGetVersion(ctypes.byref(info)) != 0:
+            return 0
+        return int(info.dwBuildNumber)
+    except (OSError, AttributeError):
+        return 0
+
+
+def supports_mica() -> bool:
+    """这台机器画不画得出 Mica。Windows 11 起才有。
+
+    要在建窗口**之前**问：窗口底色得先设成透明，材质才透得上来，
+    而透明是个建窗口时就要定下来的属性。
+    """
+    return _IS_WINDOWS and windows_build() >= _BUILD_WIN11
+
+
+def enable_mica(hwnd: int) -> bool:
+    """给窗口铺上 Mica 材质。成功返回 ``True``。
+
+    22H2 起用公开的 ``DWMWA_SYSTEMBACKDROP_TYPE``，21H2 只有未公开的
+    ``DWMWA_MICA_EFFECT``；两个都试。
+
+    ⚠️ 光调这个不够：窗口自己画的那层像素必须是透明的，否则 DWM 铺在后面的
+    材质被整个盖住，看上去毫无变化。调用方要负责把底色留空。
+    """
+    if not _IS_WINDOWS or not hwnd:
+        return False
+    build = windows_build()
+    if build < _BUILD_WIN11:
+        return False
+    try:
+        dwmapi = ctypes.WinDLL("dwmapi")
+        dwmapi.DwmSetWindowAttribute.argtypes = [
+            wintypes.HWND, wintypes.DWORD, ctypes.c_void_p, wintypes.DWORD]
+        dwmapi.DwmSetWindowAttribute.restype = ctypes.c_long
+        attr, value = ((DWMWA_SYSTEMBACKDROP_TYPE, DWMSBT_MAINWINDOW)
+                       if build >= _BUILD_BACKDROP else (DWMWA_MICA_EFFECT, 1))
+        arg = ctypes.c_int(value)
+        return dwmapi.DwmSetWindowAttribute(
+            wintypes.HWND(hwnd), attr, ctypes.byref(arg), ctypes.sizeof(arg)) == 0
+    except (OSError, AttributeError):
+        return False
 
 
 def set_dpi_awareness() -> None:

@@ -33,7 +33,7 @@ PKG = ROOT / "packaging"
 DIST = ROOT / "dist" / "cun"
 
 sys.path.insert(0, str(ROOT))
-from core.version import APP_NAME, __version__      # noqa: E402
+from core.version import APP_NAME, APP_USER_MODEL_ID, __version__   # noqa: E402
 
 EXE = DIST / f"{APP_NAME}.exe"
 
@@ -181,7 +181,8 @@ def find_iscc() -> Path:
 def build_installer(version: str) -> None:
     step("Inno Setup 出安装包")
     iscc = find_iscc()
-    run([str(iscc), f"/DAppVersion={version}", str(PKG / "installer.iss")], cwd=PKG)
+    run([str(iscc), f"/DAppVersion={version}",
+         f"/DAppUserModelID={APP_USER_MODEL_ID}", str(PKG / "installer.iss")], cwd=PKG)
     out = ROOT / "dist_installer"
     made = sorted(out.glob(f"*{version}*.exe"), key=lambda p: p.stat().st_mtime)
     if not made:

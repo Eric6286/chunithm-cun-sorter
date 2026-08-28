@@ -16,6 +16,10 @@
 #ifndef AppVersion
   #define AppVersion "0.0.0"
 #endif
+; 真源是 coreersion.py 的 APP_USER_MODEL_ID，由 build.py 传进来
+#ifndef AppUserModelID
+  #define AppUserModelID "JinTianNiCunLeMa.App"
+#endif
 #ifndef SourceDir
   #define SourceDir "..\dist\cun"
 #endif
@@ -67,8 +71,11 @@ Source: "{#SourceDir}\*"; DestDir: "{app}"; \
     Flags: ignoreversion recursesubdirs createallsubdirs
 
 [Icons]
-Name: "{autoprograms}\{#AppName}"; Filename: "{app}\{#AppExeName}"
-Name: "{autodesktop}\{#AppName}"; Filename: "{app}\{#AppExeName}"; Tasks: desktopicon
+; AppUserModelID 要和程序运行时 set_app_user_model_id 声明的那个一模一样。
+; 不写的话，任务栏上跑着的窗口和开始菜单里的快捷方式在 Windows 眼里是两个东西：
+; 右键「固定到任务栏」钉出来的是一个点不开的空壳。
+Name: "{autoprograms}\{#AppName}"; Filename: "{app}\{#AppExeName}";     AppUserModelID: "{#AppUserModelID}"
+Name: "{autodesktop}\{#AppName}"; Filename: "{app}\{#AppExeName}";     AppUserModelID: "{#AppUserModelID}"; Tasks: desktopicon
 
 [Run]
 Filename: "{app}\{#AppExeName}"; Description: "现在就打开 {#AppName}"; \

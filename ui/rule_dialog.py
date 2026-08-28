@@ -8,7 +8,7 @@
 from __future__ import annotations
 
 from PySide6.QtCore import Qt
-from PySide6.QtWidgets import (QComboBox, QDialog, QFormLayout, QHBoxLayout,
+from PySide6.QtWidgets import (QDialog, QFormLayout, QHBoxLayout,
                                QLabel, QLineEdit, QPushButton, QSpinBox,
                                QVBoxLayout, QWidget)
 
@@ -50,12 +50,12 @@ class RuleDialog(QDialog):
         self.name_box.setPlaceholderText("例如：SSS寸")
         form.addRow("名称", self.name_box)
 
-        self.kind_box = QComboBox()
+        self.kind_box = widgets.Combo()
         for _, label in _KINDS:
             self.kind_box.addItem(label)
         form.addRow("判定类型", self.kind_box)
 
-        self.preset_box = QComboBox()
+        self.preset_box = widgets.Combo()
         for name, _, _ in SCORE_PRESETS:
             self.preset_box.addItem(name)
         self.preset_box.addItem(_CUSTOM_RANGE)
@@ -84,7 +84,7 @@ class RuleDialog(QDialog):
         self.m_hi_label = QLabel("MISS 上限")
         form.addRow(self.m_hi_label, self.m_hi_box)
 
-        self.rank_box = QComboBox()
+        self.rank_box = widgets.Combo()
         for r in ranks(cfg):
             self.rank_box.addItem(r)
         idx = self.rank_box.findText("SSS")

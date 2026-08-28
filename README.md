@@ -62,6 +62,8 @@ CHUNITHM「寸」成绩自动识别 · 全截图归档 · DGHub 联动
 ## 运行要求
 
 - Windows 10 1809+ / 11，x64；游戏窗口 / 截图分辨率 1920×1080 最稳（其它分辨率按比例缩放）
+- 窗口背景用 Windows 11 的 Mica 材质。Windows 10 或者系统「设置 → 个性化 → 颜色」里关掉了
+  「透明效果」时自动退回不透明底色，功能不受影响
 - Tesseract OCR（<https://github.com/UB-Mannheim/tesseract/wiki>）：走截图 + OCR 这条路时必需。装到默认路径 `C:\Program Files\Tesseract-OCR\` 即可，或把含 `eng.traineddata` 的 `tessdata` 放数据目录下 / 在配置里改 `tesseract_cmd`。只用联动 + 自动截图的话，新成绩不需要它，历史截图重扫仍需要
 - DGHub 主程序（<http://www.dghub.top/>）：只有开 DGHub 联动才要。DG-Lab 郊狼设备的联动主程序，从其「插件中心 → 外部插件」导入本项目的联动插件
 - 安装包是自包含的，**不需要装 Python**。只有从源码跑才要 Python 3.11+
@@ -70,7 +72,7 @@ CHUNITHM「寸」成绩自动识别 · 全截图归档 · DGHub 联动
 
 ### 基础使用（识别 + 归档）
 
-1. 下载最新 `chunithm-cun-sorter-2.0.0-安装程序.exe`，双击。
+1. 下载最新 `chunithm-cun-sorter-2.0.1-安装程序.exe`，双击。
 2. 安装向导里会问 **CHUNITHM 装在哪**：选中游戏根目录（里面有 `bin` 文件夹的那一层）。
    它会先猜一个常见位置，不对就点「浏览」。现在不确定可以留空，第一次打开程序时还会再问。
 3. 装完打开程序。「配置」页确认截图目录、添加判定规则、按需开启整理，保存；

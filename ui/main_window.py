@@ -12,7 +12,7 @@ import threading
 import time
 from pathlib import Path
 
-from PySide6.QtCore import QTimer, Signal
+from PySide6.QtCore import QSize, Qt, QTimer, Signal
 from PySide6.QtGui import QAction, QIcon
 from PySide6.QtWidgets import (QApplication, QFileDialog, QHBoxLayout, QListWidget,
                                QListWidgetItem, QMainWindow, QMenu, QStackedWidget,
@@ -39,6 +39,9 @@ from .widgets import Toast
 _FREEZE_TRIGGER_SEC = 2.5
 #: 少于这么多音符不当一次有效演奏
 _MIN_NOTES = 10
+#: 侧栏宽度与每一项的行高
+_SIDEBAR_WIDTH = 152
+_NAV_ROW_HEIGHT = 30
 
 
 class MainWindow(QMainWindow):
@@ -71,6 +74,13 @@ class MainWindow(QMainWindow):
         if icon is not None:
             self.setWindowIcon(icon)
 
+        # Mica 得在建窗口之前定：材质是 DWM 铺在窗口**后面**的，窗口自己那层
+        # 像素不透明就等于把它整个盖住。而透明是建窗口时才能定下来的属性，
+        # show 之后再设不生效。真正开材质在 _after_shown 里，那时才有 hwnd。
+        self._mica = winapi.supports_mica()
+        if self._mica:
+            self.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground, True)
+
         self._build_ui()
         self._wire_signals()
         self.setMinimumSize(860, 520)
@@ -94,7 +104,7 @@ class MainWindow(QMainWindow):
 
         sidebar = QWidget()
         sidebar.setObjectName("Sidebar")
-        sidebar.setFixedWidth(176)
+        sidebar.setFixedWidth(_SIDEBAR_WIDTH)
         side_box = QVBoxLayout(sidebar)
         side_box.setContentsMargins(0, theme.GRID * 2, 0, theme.GRID * 2)
         side_box.setSpacing(0)
@@ -103,7 +113,9 @@ class MainWindow(QMainWindow):
         self.nav.setObjectName("NavList")
         self.nav.setFrameShape(QListWidget.Shape.NoFrame)
         for text in ("配置", "统计", "运行"):
-            QListWidgetItem(text, self.nav)
+            item = QListWidgetItem(text, self.nav)
+            # 不给行高，Qt 会按图标那一档算，选中的色块高得像块砖
+            item.setSizeHint(QSize(_SIDEBAR_WIDTH, _NAV_ROW_HEIGHT))
         self.nav.setCurrentRow(0)
         self.nav.currentRowChanged.connect(self._page_changed)
         side_box.addWidget(self.nav)
@@ -115,6 +127,7 @@ class MainWindow(QMainWindow):
         self.run_page = RunPage(self)
 
         self.stack = QStackedWidget()
+        self.stack.setObjectName("ContentPane")
         self.stack.addWidget(self.config_page)
         self.stack.addWidget(self.stats_page)
         self.stack.addWidget(self.run_page)
@@ -169,8 +182,15 @@ class MainWindow(QMainWindow):
         return tray
 
     def _after_shown(self) -> None:
-        """窗口摆出来之后再做的事：深色标题栏、首次运行向导、联动开关。"""
-        winapi.enable_dark_titlebar(int(self.winId()))
+        """窗口摆出来之后再做的事：深色标题栏、Mica、首次运行向导、联动开关。"""
+        hwnd = int(self.winId())
+        winapi.enable_dark_titlebar(hwnd)
+        if self._mica and not winapi.enable_mica(hwnd):
+            # 材质没铺上，而底色已经按「透得过去」配好了——再不换回来就是一片全黑
+            self._mica = False
+            app = QApplication.instance()
+            if app is not None:
+                app.setStyleSheet(theme.stylesheet(mica=False))
         self._ensure_game_root()
         self.apply_dghub_link()
 

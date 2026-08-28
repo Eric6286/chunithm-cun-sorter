@@ -32,10 +32,11 @@ class StatsPage(QWidget):
         title_col = QVBoxLayout()
         title_col.setSpacing(2)
         title_col.addWidget(widgets.title("每日「寸」统计"))
-        self.range_label = widgets.caption("—")
+        # 用会换行的 caption 会在这儿折成两行：它在 QHBoxLayout 里只拿得到自己的
+        # sizeHint 那么宽，哪怕右边还空着一大片
+        self.range_label = widgets.ElidedLabel("—")
         title_col.addWidget(self.range_label)
-        header.addLayout(title_col)
-        header.addStretch(1)
+        header.addLayout(title_col, 1)
         refresh = QPushButton("刷新")
         refresh.clicked.connect(self.refresh)
         header.addWidget(refresh)

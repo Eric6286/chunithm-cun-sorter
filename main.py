@@ -40,7 +40,8 @@ def main(argv: list[str] | None = None) -> int:
     app.setApplicationName("chunithm-cun-sorter")
     app.setQuitOnLastWindowClosed(False)            # 关窗口＝缩托盘，别退出进程
     app.setFont(theme.ui_font())
-    app.setStyleSheet(theme.stylesheet())
+    # 样式表要在建窗口之前就定下来，不然第一帧会闪一下不同的底色
+    app.setStyleSheet(theme.stylesheet(mica=winapi.supports_mica()))
 
     window = MainWindow()
     window.show()

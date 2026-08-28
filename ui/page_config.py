@@ -10,7 +10,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, NamedTuple
 
 from PySide6.QtCore import Qt
-from PySide6.QtWidgets import (QComboBox, QDoubleSpinBox, QHBoxLayout, QLabel,
+from PySide6.QtWidgets import (QDoubleSpinBox, QHBoxLayout, QLabel,
                                QLineEdit, QPushButton, QScrollArea, QSpinBox,
                                QVBoxLayout, QWidget)
 
@@ -19,7 +19,7 @@ from core.models import MAX_SCORE, Category, CunConfig, OrganizeStep
 
 from . import theme, widgets
 from .rule_dialog import RuleDialog
-from .widgets import Card, Row, Switch
+from .widgets import Card, Combo, Row, Switch
 
 if TYPE_CHECKING:                                   # 只为类型标注，运行时不导入主窗口
     from .main_window import MainWindow
@@ -39,13 +39,13 @@ class _RuleRefs(NamedTuple):
     lo: QSpinBox | None
     m_hi: QSpinBox | None
     a_hi: QSpinBox | None
-    rank: QComboBox | None
+    rank: Combo | None
 
 
 class _OrgRefs(NamedTuple):
     kind: str
     switch: Switch
-    span: QComboBox | None
+    span: Combo | None
 
 
 class ConfigPage(QWidget):
@@ -174,7 +174,7 @@ class ConfigPage(QWidget):
         elif cat.kind == "am":
             a_hi = _spin(0, 100, cat.a_hi if cat.a_hi is not None else 4)
             m_hi = _spin(0, 100, cat.m_hi if cat.m_hi is not None else 4)
-            rank = QComboBox()
+            rank = Combo()
             for r in ranks(self._main.cfg):
                 rank.addItem(r)
             idx = rank.findText(cat.min_rank or "SSS")
@@ -244,7 +244,7 @@ class ConfigPage(QWidget):
             row = Row(_ORGANIZE_LABELS.get(step.kind, step.kind))
             span = None
             if step.kind == "date":
-                span = QComboBox()
+                span = Combo()
                 for name in _SPAN_NAMES:
                     span.addItem(name)
                 span.setCurrentIndex(max(0, _SPAN_KEYS.index(step.date_span)

@@ -6,14 +6,15 @@ from __future__ import annotations
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-from PySide6.QtWidgets import (QComboBox, QHBoxLayout, QPlainTextEdit, QPushButton,
-                               QVBoxLayout, QWidget)
+from PySide6.QtCore import Qt
+from PySide6.QtWidgets import (QHBoxLayout, QPlainTextEdit, QPushButton,
+                               QScrollArea, QVBoxLayout, QWidget)
 
 from core import autostart, start_bat
 from core import config as config_mod
 
 from . import theme, widgets
-from .widgets import Card, Row, Switch
+from .widgets import Card, Combo, Row, Switch
 
 if TYPE_CHECKING:
     from .main_window import MainWindow
@@ -29,7 +30,21 @@ class RunPage(QWidget):
         self._main = main
         self._initializing = True
 
-        outer = QVBoxLayout(self)
+        # 和「配置」页一样套一层滚动：窗口一矮，剩下的靠滚，而不是把每张卡片
+        # 压扁——压到比内容还矮，行里的标签和副标题就叠在一起了
+        shell = QVBoxLayout(self)
+        shell.setContentsMargins(0, 0, 0, 0)
+        scroll = QScrollArea()
+        scroll.setObjectName("PageScroll")
+        scroll.setWidgetResizable(True)
+        scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
+        shell.addWidget(scroll)
+
+        body = QWidget()
+        body.setObjectName("PageBody")
+        scroll.setWidget(body)
+
+        outer = QVBoxLayout(body)
         outer.setContentsMargins(theme.GRID * 4, theme.GRID * 3, theme.GRID * 4, theme.GRID * 3)
         outer.setSpacing(theme.GRID)
 
@@ -41,7 +56,7 @@ class RunPage(QWidget):
         watch_card = Card()
 
         mode_row = Row("处理模式")
-        self.mode_box = QComboBox()
+        self.mode_box = Combo()
         for _, label in _MODES:
             self.mode_box.addItem(label)
         self.mode_box.setCurrentIndex(
@@ -107,6 +122,8 @@ class RunPage(QWidget):
         self.log_box.setReadOnly(True)
         self.log_box.setMaximumBlockCount(_LOG_LIMIT)
         self.log_box.setFont(theme.ui_font(theme.FS_FOOTNOTE))
+        self.log_box.setPlaceholderText("监视启动后，命中的截图会一条条记在这里")
+        self.log_box.setMinimumHeight(theme.GRID * 18)
         outer.addWidget(self.log_box, 1)
 
         self.refresh_start_bat()

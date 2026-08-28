@@ -9,11 +9,12 @@ from __future__ import annotations
 
 from collections.abc import Sequence
 
-from PySide6.QtCore import (Property, QEasingCurve, QPropertyAnimation, QRectF,
-                            QSize, Qt, QTimer, Signal)
+from PySide6.QtCore import (Property, QEasingCurve, QEvent, QPropertyAnimation,
+                            QRectF, QSize, Qt, QTimer, Signal)
 from PySide6.QtGui import QColor, QPainter, QPainterPath, QPen
-from PySide6.QtWidgets import (QAbstractButton, QFrame, QGraphicsDropShadowEffect,
-                               QHBoxLayout, QLabel, QSizePolicy, QVBoxLayout, QWidget)
+from PySide6.QtWidgets import (QAbstractButton, QComboBox, QFrame,
+                               QGraphicsDropShadowEffect, QHBoxLayout, QLabel,
+                               QSizePolicy, QVBoxLayout, QWidget)
 
 from . import theme
 
@@ -22,7 +23,7 @@ from . import theme
 class Switch(QAbstractButton):
     """iOS/macOS 那种拨动开关。用于「开或关」这一类二选一。"""
 
-    _W, _H, _PAD = 42, 24, 2
+    _W, _H, _PAD = 38, 22, 2
 
     def __init__(self, parent: QWidget | None = None) -> None:
         super().__init__(parent)
@@ -87,6 +88,38 @@ class Switch(QAbstractButton):
         p.end()
 
 
+# ----------------------------- 下拉框 ---------------------------------------
+class Combo(QComboBox):
+    """下拉框。**箭头是自己画的。**
+
+    样式表把 ``QComboBox::drop-down`` 的按钮框去掉之后，Windows 样式就不再画那个
+    箭头了，下拉框看上去和只读输入框一模一样，根本看不出能点。QSS 里拿边框拼三角
+    的老办法在 Qt 里会画成一个实心方块，比没有还难看，所以只能自己描一笔。
+
+    应用内的下拉框一律用这个类，别直接用 ``QComboBox``。
+    """
+
+    #: 箭头的宽、高，以及离右边界多远
+    _W, _H, _RIGHT = 9, 5, 12
+
+    def paintEvent(self, event) -> None:             # noqa: N802 - Qt 的命名
+        super().paintEvent(event)
+        p = QPainter(self)
+        p.setRenderHint(QPainter.RenderHint.Antialiasing)
+        p.setPen(QPen(theme.label_color(0.60 if self.isEnabled() else 0.30), 1.6,
+                      Qt.PenStyle.SolidLine, Qt.PenCapStyle.RoundCap,
+                      Qt.PenJoinStyle.RoundJoin))
+        p.setBrush(Qt.BrushStyle.NoBrush)
+        cx = self.width() - self._RIGHT - self._W / 2
+        cy = self.height() / 2
+        path = QPainterPath()
+        path.moveTo(cx - self._W / 2, cy - self._H / 2)
+        path.lineTo(cx, cy + self._H / 2)
+        path.lineTo(cx + self._W / 2, cy - self._H / 2)
+        p.drawPath(path)
+        p.end()
+
+
 # ----------------------------- 文本 -----------------------------------------
 def section_title(text: str) -> QLabel:
     """分组标题，放在卡片**外面**上方。"""
@@ -101,6 +134,48 @@ def caption(text: str) -> QLabel:
     lb.setProperty("role", "caption")
     lb.setWordWrap(True)
     return lb
+
+
+class ElidedLabel(QLabel):
+    """单行副标题：装不下就从中间省略。
+
+    卡片里的副标题**不能换行**。会换行的标签高度取决于宽度，窗口一窄就悄悄
+    长成两三行，把整行顶高、连带把同一张卡片里别的行挤扁。路径这种长文本
+    从中间省略最好认——头上的盘符和尾巴上的文件名都留着。
+    """
+
+    def __init__(self, text: str = "", parent: QWidget | None = None) -> None:
+        super().__init__(parent)
+        self.setProperty("role", "caption")
+        self._full = text
+        # 宽度 Ignored：副标题再长也不该把行撑宽，缩就是了
+        self.setSizePolicy(QSizePolicy.Policy.Ignored, QSizePolicy.Policy.Preferred)
+        self._relayout()
+
+    def setText(self, text: str) -> None:            # noqa: N802 - Qt 的命名
+        self._full = text
+        self._relayout()
+
+    def text(self) -> str:
+        return self._full
+
+    def resizeEvent(self, event) -> None:            # noqa: N802
+        super().resizeEvent(event)
+        self._relayout()
+
+    def changeEvent(self, event) -> None:            # noqa: N802
+        # 样式表把字号改小是在构造之后才生效的，字体一换就得重新量一次
+        super().changeEvent(event)
+        if event.type() == QEvent.Type.FontChange:
+            self._relayout()
+
+    def _relayout(self) -> None:
+        width = max(self.width(), 32)
+        shown = self.fontMetrics().elidedText(
+            self._full, Qt.TextElideMode.ElideMiddle, width)
+        super().setText(shown)
+        # 只有真省略了才挂 tooltip，短文本上冒一个同样的浮层是噪音
+        self.setToolTip(self._full if shown != self._full else "")
 
 
 def body(text: str = "") -> QLabel:
@@ -163,34 +238,45 @@ class Row(QWidget):
 
     停用时**整行一起变淡**——标签也淡，不能只灰控件、文字仍然雪白。
     Qt 会把 disabled 往子部件传，样式表里 ``QLabel:disabled`` 接住。
+
+    ⚠️ 高度**不要用** ``setMinimumHeight``。Qt 的 ``qSmartMinSize`` 里显式设过的
+    最小高度会**顶掉**布局算出来的那个，于是页面一挤，行就被压到比内容还矮，
+    标签和副标题直接叠在一起（v2.0 的「运行」页就是这么糊的）。地板改成加在
+    标签上，行本身用 Fixed 的纵向策略，谁也压不动。
     """
 
     def __init__(self, label: str, sublabel: str = "", parent: QWidget | None = None) -> None:
         super().__init__(parent)
+        self.setSizePolicy(QSizePolicy.Policy.Preferred, QSizePolicy.Policy.Fixed)
         self._box = QHBoxLayout(self)
         self._box.setContentsMargins(theme.GRID * 2, theme.GRID, theme.GRID * 2, theme.GRID)
-        self._box.setSpacing(theme.GRID * 1.5)
+        self._box.setSpacing(theme.GRID * 2)
 
         text_col = QVBoxLayout()
         text_col.setContentsMargins(0, 0, 0, 0)
         text_col.setSpacing(1)
         self.label = QLabel(label)
         text_col.addWidget(self.label)
-        self.sublabel: QLabel | None = None
-        if sublabel:
-            self.sublabel = caption(sublabel)
-            text_col.addWidget(self.sublabel)
-        self._box.addLayout(text_col)
-        self._box.addStretch(1)
-        self.setMinimumHeight(theme.ROW_HEIGHT)
+        # 副标题一律先建好再按需显示。建在构造函数里、只在有文案时才建，
+        # 会让之后的 set_sublabel 悄悄没反应（v2.0 的「接入 start.bat」那行
+        # 就是这么一直空着的）。
+        self.sublabel = ElidedLabel(sublabel)
+        text_col.addWidget(self.sublabel)
+        self._box.addLayout(text_col, 1)
+        self._apply_sublabel(sublabel)
 
     def add(self, *widgets: QWidget) -> None:
         for w in widgets:
             self._box.addWidget(w)
 
     def set_sublabel(self, text: str) -> None:
-        if self.sublabel is not None:
-            self.sublabel.setText(text)
+        self.sublabel.setText(text)
+        self._apply_sublabel(text)
+
+    def _apply_sublabel(self, text: str) -> None:
+        """副标题空着就整条藏掉，行高的地板改由标签自己扛。"""
+        self.sublabel.setVisible(bool(text))
+        self.label.setMinimumHeight(0 if text else theme.ROW_HEIGHT - theme.GRID * 2)
 
 
 # ----------------------------- 统计块 ---------------------------------------
