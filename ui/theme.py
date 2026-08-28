@@ -73,7 +73,7 @@ LABEL_3 = "rgba(235, 235, 245, 0.30)"
 #: 照搬不透明的取值层与层的落差就糊掉了。
 BG_WINDOW_MICA = "transparent"
 BG_SIDEBAR_MICA = "transparent"
-BG_CONTENT_MICA = alpha("#1C1C1E", 0.55)
+BG_CONTENT_MICA = "transparent"
 BG_CARD_MICA = alpha("#3A3A3C", 0.55)
 BG_FIELD_MICA = alpha("#48484A", 0.60)
 
@@ -88,6 +88,8 @@ FS_SUBHEAD = 11
 FS_FOOTNOTE = 10
 FS_NUMBER = 22
 FS_TITLE = 15
+#: 页面大标题
+FS_PAGE = 22
 
 _FONT_STACK = ("SF Pro Text", "SF Pro Display", "Segoe UI Variable Text",
                "Segoe UI", "PingFang SC", "苹方", "Microsoft YaHei UI", "微软雅黑")
@@ -178,6 +180,11 @@ QLabel[role="title"] {{
     color: {LABEL};
     font-size: {FS_TITLE}px;
 }}
+QLabel[role="page"] {{
+    color: {LABEL};
+    font-size: {FS_PAGE}px;
+    font-weight: 600;
+}}
 QLabel:disabled {{
     color: {LABEL_3};
 }}
@@ -185,7 +192,7 @@ QLabel:disabled {{
 /* inset grouped 的圆角框 */
 QFrame#Card {{
     background: {bg_card};
-    border: none;
+    border: 1px solid {alpha('#FFFFFF', 0.07)};
     border-radius: {R_CONTAINER}px;
 }}
 QFrame#Separator {{
@@ -234,6 +241,18 @@ QPushButton[role="destructive"] {{
 QPushButton[role="destructive"]:hover {{
     background: {alpha(RED, 0.14)};
 }}
+/* 列表里的删除：平时只是个淡叉，指上去才变红。一列五个红「删除」太吵 */
+QPushButton[role="remove"] {{
+    background: transparent;
+    color: {LABEL_3};
+    border-radius: {R_CONTROL}px;
+    padding: 2px 9px;
+    font-size: {FS_TITLE}px;
+}}
+QPushButton[role="remove"]:hover {{
+    background: {alpha(RED, 0.16)};
+    color: {RED};
+}}
 QPushButton[role="quiet"] {{
     background: transparent;
     color: {LABEL_2};
@@ -259,6 +278,13 @@ QComboBox:focus, QPlainTextEdit:focus {{
     border: 1px solid {ACCENT};
 }}
 QLineEdit:read-only {{
+    color: {LABEL_2};
+}}
+/* 只读的路径不是给人填的，别画成输入框——当行里的「值」排版就够了 */
+QLineEdit[role="path"] {{
+    background: transparent;
+    border: none;
+    padding: 0;
     color: {LABEL_2};
 }}
 QLineEdit:disabled, QSpinBox:disabled, QDoubleSpinBox:disabled, QComboBox:disabled {{

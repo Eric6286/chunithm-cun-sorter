@@ -6,9 +6,7 @@ from __future__ import annotations
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-from PySide6.QtCore import Qt
-from PySide6.QtWidgets import (QHBoxLayout, QPlainTextEdit, QPushButton,
-                               QScrollArea, QVBoxLayout, QWidget)
+from PySide6.QtWidgets import QPlainTextEdit, QPushButton, QWidget
 
 from core import autostart, start_bat
 from core import config as config_mod
@@ -30,25 +28,8 @@ class RunPage(QWidget):
         self._main = main
         self._initializing = True
 
-        # 和「配置」页一样套一层滚动：窗口一矮，剩下的靠滚，而不是把每张卡片
-        # 压扁——压到比内容还矮，行里的标签和副标题就叠在一起了
-        shell = QVBoxLayout(self)
-        shell.setContentsMargins(0, 0, 0, 0)
-        scroll = QScrollArea()
-        scroll.setObjectName("PageScroll")
-        scroll.setWidgetResizable(True)
-        scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
-        shell.addWidget(scroll)
-
-        body = QWidget()
-        body.setObjectName("PageBody")
-        scroll.setWidget(body)
-
-        outer = QVBoxLayout(body)
-        outer.setContentsMargins(theme.GRID * 4, theme.GRID * 3, theme.GRID * 4, theme.GRID * 3)
-        outer.setSpacing(theme.GRID)
-
-        outer.addWidget(widgets.title("运行 / 监视"))
+        outer = widgets.page_shell(self)
+        outer.addWidget(widgets.page_title("运行"))
         outer.addSpacing(theme.GRID)
 
         # --- 监视 ---
@@ -82,7 +63,7 @@ class RunPage(QWidget):
             "监视运行时关掉窗口＝最小化到托盘继续后台监视。右键托盘图标可以重新显示或退出。"))
 
         # --- 联动 ---
-        outer.addSpacing(theme.GRID * 2)
+        outer.addSpacing(theme.GRID * 3)
         outer.addWidget(widgets.section_title("DGHub 联动"))
         link_card = Card()
         self.link_row = Row("数据服务", "未启用")
@@ -93,7 +74,7 @@ class RunPage(QWidget):
         outer.addWidget(widgets.caption("开关在「配置」页，这里只显示当前状态。"))
 
         # --- 自启动 ---
-        outer.addSpacing(theme.GRID * 2)
+        outer.addSpacing(theme.GRID * 3)
         outer.addWidget(widgets.section_title("自启动"))
         auto_card = Card()
 
@@ -116,7 +97,7 @@ class RunPage(QWidget):
             "原文件会先备份成 .cun-backup，关掉开关可以精确还原。"))
 
         # --- 最近命中 ---
-        outer.addSpacing(theme.GRID * 2)
+        outer.addSpacing(theme.GRID * 3)
         outer.addWidget(widgets.section_title("最近命中"))
         self.log_box = QPlainTextEdit()
         self.log_box.setReadOnly(True)

@@ -14,7 +14,7 @@ from PySide6.QtCore import (Property, QEasingCurve, QEvent, QPropertyAnimation,
 from PySide6.QtGui import QColor, QPainter, QPainterPath, QPen
 from PySide6.QtWidgets import (QAbstractButton, QComboBox, QFrame,
                                QGraphicsDropShadowEffect, QHBoxLayout, QLabel,
-                               QSizePolicy, QVBoxLayout, QWidget)
+                               QScrollArea, QSizePolicy, QVBoxLayout, QWidget)
 
 from . import theme
 
@@ -86,6 +86,56 @@ class Switch(QAbstractButton):
         p.setBrush(knob)
         p.drawEllipse(QRectF(x, self._PAD, d, d))
         p.end()
+
+
+# ----------------------------- 页面骨架 -------------------------------------
+#: 内容列的宽度上限。窗口能拉到 2000 宽，而「标签在最左、控件在最右」的行
+#: 一旦拉开，中间就是一大片空白，眼睛要横扫整行才对得上——所以内容封顶居中，
+#: 多出来的宽度留白。macOS 的「系统设置」和 WinUI 的设置页都是这么做的。
+COLUMN_WIDTH = 840
+
+
+def page_shell(owner: QWidget) -> QVBoxLayout:
+    """给一页搭好「滚动 + 居中定宽列」的壳，返回往里放东西的那个布局。
+
+    **每一页都要套滚动**：不套的话窗口一矮，布局会转而去压每张卡片，
+    压到比内容还矮就糊成一团。
+    """
+    shell = QVBoxLayout(owner)
+    shell.setContentsMargins(0, 0, 0, 0)
+
+    scroll = QScrollArea()
+    scroll.setObjectName("PageScroll")
+    scroll.setWidgetResizable(True)
+    scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
+    shell.addWidget(scroll)
+
+    canvas = QWidget()
+    canvas.setObjectName("PageBody")
+    scroll.setWidget(canvas)
+
+    centering = QHBoxLayout(canvas)
+    centering.setContentsMargins(0, 0, 0, 0)
+    centering.addStretch(1)
+
+    column = QWidget()
+    column.setObjectName("PageBody")
+    column.setMaximumWidth(COLUMN_WIDTH)
+    centering.addWidget(column, 10)
+    centering.addStretch(1)
+
+    body = QVBoxLayout(column)
+    body.setContentsMargins(theme.GRID * 3, theme.GRID * 3,
+                            theme.GRID * 3, theme.GRID * 4)
+    body.setSpacing(theme.GRID)
+    return body
+
+
+def page_title(text: str) -> QLabel:
+    """页面大标题。三页都要有，缺一页就显得那页没做完。"""
+    lb = QLabel(text)
+    lb.setProperty("role", "page")
+    return lb
 
 
 # ----------------------------- 下拉框 ---------------------------------------

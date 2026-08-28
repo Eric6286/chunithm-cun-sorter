@@ -336,14 +336,24 @@ def supports_mica() -> bool:
     return _IS_WINDOWS and windows_build() >= _BUILD_WIN11
 
 
+class _MARGINS(ctypes.Structure):
+    _fields_ = [("cxLeftWidth", ctypes.c_int), ("cxRightWidth", ctypes.c_int),
+                ("cyTopHeight", ctypes.c_int), ("cyBottomHeight", ctypes.c_int)]
+
+
 def enable_mica(hwnd: int) -> bool:
     """给窗口铺上 Mica 材质。成功返回 ``True``。
 
     22H2 起用公开的 ``DWMWA_SYSTEMBACKDROP_TYPE``，21H2 只有未公开的
     ``DWMWA_MICA_EFFECT``；两个都试。
 
-    ⚠️ 光调这个不够：窗口自己画的那层像素必须是透明的，否则 DWM 铺在后面的
-    材质被整个盖住，看上去毫无变化。调用方要负责把底色留空。
+    ⚠️ **两步缺一不可**，只做第一步的表现是「属性设上了、回读也对，但界面毫无变化」：
+
+    1. ``DwmSetWindowAttribute`` 声明要哪种材质；
+    2. ``DwmExtendFrameIntoClientArea`` 传 ``-1`` 的四边，把玻璃摊到整个客户区。
+       不摊的话材质只出现在标题栏那一条，客户区还是老样子。
+
+    另外调用方要负责让窗口自己那层像素透明，否则材质被整个盖在下面。
     """
     if not _IS_WINDOWS or not hwnd:
         return False
@@ -355,11 +365,20 @@ def enable_mica(hwnd: int) -> bool:
         dwmapi.DwmSetWindowAttribute.argtypes = [
             wintypes.HWND, wintypes.DWORD, ctypes.c_void_p, wintypes.DWORD]
         dwmapi.DwmSetWindowAttribute.restype = ctypes.c_long
+        dwmapi.DwmExtendFrameIntoClientArea.argtypes = [
+            wintypes.HWND, ctypes.POINTER(_MARGINS)]
+        dwmapi.DwmExtendFrameIntoClientArea.restype = ctypes.c_long
+
         attr, value = ((DWMWA_SYSTEMBACKDROP_TYPE, DWMSBT_MAINWINDOW)
                        if build >= _BUILD_BACKDROP else (DWMWA_MICA_EFFECT, 1))
         arg = ctypes.c_int(value)
-        return dwmapi.DwmSetWindowAttribute(
-            wintypes.HWND(hwnd), attr, ctypes.byref(arg), ctypes.sizeof(arg)) == 0
+        if dwmapi.DwmSetWindowAttribute(
+                wintypes.HWND(hwnd), attr, ctypes.byref(arg), ctypes.sizeof(arg)) != 0:
+            return False
+
+        margins = _MARGINS(-1, -1, -1, -1)
+        return dwmapi.DwmExtendFrameIntoClientArea(
+            wintypes.HWND(hwnd), ctypes.byref(margins)) == 0
     except (OSError, AttributeError):
         return False
 

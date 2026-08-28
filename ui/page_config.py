@@ -10,9 +10,8 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, NamedTuple
 
 from PySide6.QtCore import Qt
-from PySide6.QtWidgets import (QDoubleSpinBox, QHBoxLayout, QLabel,
-                               QLineEdit, QPushButton, QScrollArea, QSpinBox,
-                               QVBoxLayout, QWidget)
+from PySide6.QtWidgets import (QDoubleSpinBox, QHBoxLayout, QLabel, QLineEdit,
+                               QPushButton, QSpinBox, QVBoxLayout, QWidget)
 
 from core.config import ranks
 from core.models import MAX_SCORE, Category, CunConfig, OrganizeStep
@@ -55,21 +54,9 @@ class ConfigPage(QWidget):
         self._rules: dict[str, _RuleRefs] = {}
         self._org_rows: list[tuple[QWidget, _OrgRefs]] = []
 
-        outer = QVBoxLayout(self)
-        outer.setContentsMargins(0, 0, 0, 0)
-        scroll = QScrollArea()
-        scroll.setObjectName("PageScroll")
-        scroll.setWidgetResizable(True)
-        scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
-        outer.addWidget(scroll)
-
-        body = QWidget()
-        body.setObjectName("PageBody")
-        self._body = QVBoxLayout(body)
-        self._body.setContentsMargins(theme.GRID * 4, theme.GRID * 3,
-                                      theme.GRID * 4, theme.GRID * 3)
-        self._body.setSpacing(theme.GRID)
-        scroll.setWidget(body)
+        self._body = widgets.page_shell(self)
+        self._body.addWidget(widgets.page_title("配置"))
+        self._body.addSpacing(theme.GRID)
 
         self._build_dirs()
         self._build_rules()
@@ -81,7 +68,7 @@ class ConfigPage(QWidget):
 
     def _section(self, title: str) -> None:
         if self._body.count():
-            self._body.addSpacing(theme.GRID * 2)
+            self._body.addSpacing(theme.GRID * 3)
         self._body.addWidget(widgets.section_title(title))
 
     def _note(self, text: str) -> None:
@@ -109,6 +96,8 @@ class ConfigPage(QWidget):
         row = Row(label)
         box = QLineEdit(value)
         box.setReadOnly(True)
+        box.setProperty("role", "path")
+        box.setAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
         box.setMinimumWidth(320)
         browse = QPushButton("浏览…")
         browse.clicked.connect(on_browse)
@@ -186,8 +175,8 @@ class ConfigPage(QWidget):
         switch.setChecked(cat.enabled)
         row.add(switch)
 
-        delete = QPushButton("删除")
-        delete.setProperty("role", "destructive")
+        delete = QPushButton("✕")
+        delete.setProperty("role", "remove")
         delete.setToolTip("删除这条判定规则")
         delete.clicked.connect(lambda: self._remove_rule(cat))
         row.add(delete)

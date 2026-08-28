@@ -74,7 +74,11 @@ core/winapi.py     ctypes 封装：进程 / 窗口 / 抓帧 / 单实例 / DPI
 8. **字号一律按像素给**（`setPixelSize` / QSS 的 `px`）。`ui/theme.py` 那张 HIG 字体样式表
    （13 / 11 / 10 / 22）是**像素**值——macOS 上 1pt 就是 1px，Qt 在 Windows 上按 96 DPI 换算，
    写 `pt` 会让 13 变成 17，整屏字大三分之一、行还会被挤塌（v2.0 就是这样）。
-9. **Mica 要求窗口自己不画底色。** 材质是 DWM 铺在窗口**后面**的，窗口那层像素不透明就等于
+9. **Mica 是两步，少一步等于没开。** `DwmSetWindowAttribute(DWMWA_SYSTEMBACKDROP_TYPE)`
+   之后必须再调 `DwmExtendFrameIntoClientArea` 传四边 `-1`，否则材质只铺在标题栏那一条，
+   客户区毫无变化——而属性回读还是成功的（`hr=S_OK, value=2`），光看返回值查不出来。
+   验收要用**屏幕**截图：`PrintWindow` 抓的是窗口自己画的那层，抓不到 DWM 铺在后面的材质。
+   另外**窗口自己不画底色**。 材质是 DWM 铺在窗口**后面**的，窗口那层像素不透明就等于
    把它整个盖住，看上去毫无变化。所以 `stylesheet(mica=True)` 里 `QMainWindow` 和侧栏是
    `transparent`，其余各层半透明。两条连带的约束：`WA_TranslucentBackground` 必须在 `show()`
    **之前**设，之后设不生效；而材质一旦没铺上（`enable_mica` 返回 False），底色必须换回不透明

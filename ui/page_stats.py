@@ -24,14 +24,13 @@ class StatsPage(QWidget):
         self._main = main
         self._data: list[tuple[str, int, int, int]] = []
 
-        outer = QVBoxLayout(self)
-        outer.setContentsMargins(theme.GRID * 4, theme.GRID * 3, theme.GRID * 4, theme.GRID * 3)
-        outer.setSpacing(theme.GRID * 1.5)
+        outer = widgets.page_shell(self)
+        outer.setSpacing(theme.GRID * 2)
 
         header = QHBoxLayout()
         title_col = QVBoxLayout()
         title_col.setSpacing(2)
-        title_col.addWidget(widgets.title("每日「寸」统计"))
+        title_col.addWidget(widgets.page_title("统计"))
         # 用会换行的 caption 会在这儿折成两行：它在 QHBoxLayout 里只拿得到自己的
         # sizeHint 那么宽，哪怕右边还空着一大片
         self.range_label = widgets.ElidedLabel("—")
