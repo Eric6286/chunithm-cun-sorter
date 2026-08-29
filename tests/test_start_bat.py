@@ -12,6 +12,17 @@ def _bat(tmp_path, content: bytes):
     return p
 
 
+def _injected_lines(p) -> list[bytes]:
+    r"""我们插的那一行，按行首特征找。
+
+    不要去数标记出现了几次：注入行除了当窗口标题的那个标记，还带着本程序的路径，
+    路径里也可能有同样的串——GitHub Actions 上仓库就检出在
+    ``D:\a\chunithm-cun-sorter\chunithm-cun-sorter\``，一行三个。
+    """
+    head = f'start "{start_bat.MARKER}"'.encode()
+    return [ln for ln in p.read_bytes().split(b"\r\n") if ln.startswith(head)]
+
+
 def test_the_line_goes_right_after_echo_off(tmp_path):
     p = _bat(tmp_path, b"@echo off\r\ncd /d %~dp0\r\nchusanApp.exe\r\n")
     start_bat.hook(p)
@@ -56,7 +67,26 @@ def test_hooking_is_idempotent(tmp_path):
     p = _bat(tmp_path, b"@echo off\r\nchusanApp.exe\r\n")
     start_bat.hook(p)
     start_bat.hook(p)
-    assert p.read_bytes().count(start_bat.MARKER.encode()) == 1
+    assert len(_injected_lines(p)) == 1
+
+
+def test_hooking_is_idempotent_when_our_own_path_carries_the_marker(tmp_path, monkeypatch):
+    """程序自己的路径里带着标记时，仍然只留一行。
+
+    CI 上就是这样，而开发机的路径里没有这个串，所以这种失败本地一次都复现不出来。
+    """
+    monkeypatch.setattr(
+        start_bat,
+        "launch_command",
+        lambda: '"C:\\Python311\\pythonw.exe" '
+                '"D:\\a\\chunithm-cun-sorter\\chunithm-cun-sorter\\main.py" --watch',
+    )
+    p = _bat(tmp_path, b"@echo off\r\nchusanApp.exe\r\n")
+    start_bat.hook(p)
+    start_bat.hook(p)
+    assert len(_injected_lines(p)) == 1
+    start_bat.unhook(p)
+    assert not start_bat.is_hooked(p)
 
 
 def test_unhook_restores_the_original_content(tmp_path):
