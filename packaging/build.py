@@ -28,6 +28,14 @@ import tempfile
 import time
 from pathlib import Path
 
+# 本脚本满屏中文，而输出编码随所在机器：开发机是中文 Windows（GBK）编得出，
+# GitHub runner 是 cp1252，第一句 print 就 UnicodeEncodeError。自己换成 UTF-8。
+for _stream in (sys.stdout, sys.stderr):
+    try:
+        _stream.reconfigure(encoding="utf-8", errors="replace")   # type: ignore[union-attr]
+    except (AttributeError, OSError):                             # 被重定向到不支持的流
+        pass
+
 ROOT = Path(__file__).resolve().parent.parent
 PKG = ROOT / "packaging"
 DIST = ROOT / "dist" / "cun"

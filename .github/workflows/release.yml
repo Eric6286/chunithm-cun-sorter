@@ -20,6 +20,10 @@ jobs:
   release:
     runs-on: windows-latest
 
+    env:
+      # runner 的控制台是 cp1252，中文输出会让工具直接抛 UnicodeEncodeError
+      PYTHONIOENCODING: utf-8
+
     steps:
       - name: Checkout
         uses: actions/checkout@v6
