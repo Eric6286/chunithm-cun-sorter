@@ -119,6 +119,13 @@ core/winapi.py     ctypes 封装：进程 / 窗口 / 抓帧 / 单实例 / DPI
 - **`QComboBox::drop-down` 一styled，Windows 样式就不画箭头了**，下拉框看着和只读输入框
   一模一样。QSS 里拿边框拼三角在 Qt 里会画成一个实心方块。箭头是 `widgets.Combo` 在
   `paintEvent` 里自己描的，应用内的下拉框都要用这个类。
+- **CI 的检出路径里带着仓库名**：`D:\a\chunithm-cun-sorter\chunithm-cun-sorter\`。
+  所以测试里别去数 `chunithm-cun-sorter` 出现了几次——插进 start.bat 的那行自带程序路径，
+  在 runner 上一行就有三个，本地零个。认注入行要按行首 `start "标记"`。
+- **runner 的控制台是 cp1252，中文 `print` 当场 UnicodeEncodeError**。开发机是中文
+  Windows，GBK 编得出，所以这类失败本地一次都复现不出来；想复现就
+  `PYTHONIOENCODING=cp1252` 跑一遍。`packaging/build.py` 开头已经把 stdout / stderr
+  reconfigure 成 UTF-8，两个 workflow 也设了 `PYTHONIOENCODING: utf-8`。
 - **每个页面都要套滚动容器。** 不套的话窗口一矮，布局会去压每张卡片，压到比内容还矮就糊了。
 
 ## 数据落在哪
