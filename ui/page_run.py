@@ -1,5 +1,9 @@
 # -*- coding: utf-8 -*-
-"""「运行」页：处理模式、启停监视、各路状态、自启动、最近命中。"""
+"""「运行」页：处理模式、启停监视、各路状态、自启动、最近命中。
+
+这一页的开关全部立即生效（自启动和 start.bat 本来就是即时动作），
+与「配置」页的保存边界一致。
+"""
 
 from __future__ import annotations
 
@@ -12,7 +16,7 @@ from core import autostart, start_bat
 from core import config as config_mod
 
 from . import theme, widgets
-from .widgets import Card, Combo, Row, Switch
+from .widgets import Card, Combo, Row, Switch, Toast
 
 if TYPE_CHECKING:
     from .main_window import MainWindow
@@ -30,20 +34,22 @@ class RunPage(QWidget):
 
         outer = widgets.page_shell(self)
         outer.addWidget(widgets.page_title("运行"))
-        outer.addSpacing(theme.GRID)
+        outer.addSpacing(theme.PAGE_TITLE_TO_SECTION)
 
         # --- 监视 ---
         outer.addWidget(widgets.section_title("监视"))
+        outer.addSpacing(theme.SECTION_TITLE_TO_CARD)
         watch_card = Card()
 
         mode_row = Row("处理模式")
+        # 两个选项，标签都不短 → Picker 而不是 Segmented
         self.mode_box = Combo()
         for _, label in _MODES:
             self.mode_box.addItem(label)
         self.mode_box.setCurrentIndex(
             0 if self._main.cfg.process_mode == "realtime" else 1)
         self.mode_box.currentIndexChanged.connect(self._mode_changed)
-        self.mode_box.setMinimumWidth(200)
+        self.mode_box.setMinimumWidth(210)
         mode_row.add(self.mode_box)
         watch_card.add_row(mode_row)
 
@@ -59,52 +65,64 @@ class RunPage(QWidget):
         self.game_row = game_row
         watch_card.add_row(game_row)
         outer.addWidget(watch_card)
-        outer.addWidget(widgets.caption(
-            "监视运行时关掉窗口＝最小化到托盘继续后台监视。右键托盘图标可以重新显示或退出。"))
+        outer.addSpacing(theme.CARD_TO_NOTE)
+        outer.addWidget(widgets.note(
+            "监视运行时关掉窗口等于最小化到托盘继续后台监视。"
+            "右键托盘图标可以重新显示或退出。"))
 
         # --- 联动 ---
-        outer.addSpacing(theme.GRID * 3)
+        outer.addSpacing(theme.GAP_SECTION)
         outer.addWidget(widgets.section_title("DGHub 联动"))
+        outer.addSpacing(theme.SECTION_TITLE_TO_CARD)
         link_card = Card()
         self.link_row = Row("数据服务", "未启用")
         link_card.add_row(self.link_row)
         self.judge_row = Row("判定读取", "未启用")
         link_card.add_row(self.judge_row)
         outer.addWidget(link_card)
-        outer.addWidget(widgets.caption("开关在「配置」页，这里只显示当前状态。"))
+        outer.addSpacing(theme.CARD_TO_NOTE)
+        outer.addWidget(widgets.note("开关在「配置」页，这里只显示当前状态。"))
 
         # --- 自启动 ---
-        outer.addSpacing(theme.GRID * 3)
+        outer.addSpacing(theme.GAP_SECTION)
         outer.addWidget(widgets.section_title("自启动"))
+        outer.addSpacing(theme.SECTION_TITLE_TO_CARD)
         auto_card = Card()
 
         login_row = Row("开机时启动本程序")
         self.autostart_switch = Switch()
         self.autostart_switch.setChecked(autostart.is_enabled())
+        self.autostart_switch.setAccessibleName("开机时启动本程序")
         self.autostart_switch.toggled.connect(autostart.set_enabled)
         login_row.add(self.autostart_switch)
         auto_card.add_row(login_row)
 
         self.bat_row = Row("接入 start.bat", "")
         self.bat_switch = Switch()
+        self.bat_switch.setAccessibleName("接入 start.bat")
         self.bat_switch.toggled.connect(self._toggle_start_bat)
         self.bat_row.add(self.bat_switch)
         auto_card.add_row(self.bat_row)
 
         outer.addWidget(auto_card)
-        outer.addWidget(widgets.caption(
+        outer.addSpacing(theme.CARD_TO_NOTE)
+        outer.addWidget(widgets.note(
             "接入 start.bat 之后，启动游戏会顺带拉起本程序并开始监视、直接缩到托盘。"
             "原文件会先备份成 .cun-backup，关掉开关可以精确还原。"))
 
         # --- 最近命中 ---
-        outer.addSpacing(theme.GRID * 3)
+        outer.addSpacing(theme.GAP_SECTION)
         outer.addWidget(widgets.section_title("最近命中"))
+        outer.addSpacing(theme.SECTION_TITLE_TO_CARD)
+        # 日志属于「需要快速纵向扫描的高密度内容」，不包 Card；
+        # 用 Sunken 表达它是一块内嵌的 Console。
         self.log_box = QPlainTextEdit()
+        self.log_box.setObjectName("LogBox")
         self.log_box.setReadOnly(True)
         self.log_box.setMaximumBlockCount(_LOG_LIMIT)
-        self.log_box.setFont(theme.ui_font(theme.FS_FOOTNOTE))
+        self.log_box.setFont(theme.font(theme.MONO, mono=True))
         self.log_box.setPlaceholderText("监视启动后，命中的截图会一条条记在这里")
-        self.log_box.setMinimumHeight(theme.GRID * 18)
+        self.log_box.setMinimumHeight(theme.SPACE_10 * 4)
         outer.addWidget(self.log_box, 1)
 
         self.refresh_start_bat()
@@ -132,16 +150,17 @@ class RunPage(QWidget):
                 cfg.start_bat = bat
                 config_mod.save(cfg)
                 self._main.show_toast(
-                    "已接入", f"已在 {Path(bat).name} 中加入自启动行（原文件备份为 .cun-backup）",
-                    widgets.Toast.SUCCESS)
+                    "已接入",
+                    f"已在 {Path(bat).name} 中加入自启动行，原文件备份为 .cun-backup",
+                    Toast.SUCCESS)
             except OSError as e:
-                self._main.show_toast("接入失败", str(e), widgets.Toast.ERROR, 6000)
+                self._main.show_toast("接入失败", str(e), Toast.ERROR)
         else:
             try:
                 if cfg.start_bat:
                     start_bat.unhook(cfg.start_bat)
             except OSError as e:
-                self._main.show_toast("移除失败", str(e), widgets.Toast.ERROR, 6000)
+                self._main.show_toast("移除失败", str(e), Toast.ERROR)
         self.refresh_start_bat()
 
     def refresh_start_bat(self) -> None:
@@ -177,3 +196,7 @@ class RunPage(QWidget):
 
     def append_log(self, line: str) -> None:
         self.log_box.appendPlainText(line)
+
+    def retheme(self) -> None:
+        """切换深浅之后，自绘和用代码设过的字体要重新取一遍。"""
+        self.log_box.setFont(theme.font(theme.MONO, mono=True))

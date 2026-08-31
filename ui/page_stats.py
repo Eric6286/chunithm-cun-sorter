@@ -6,7 +6,8 @@ from __future__ import annotations
 from datetime import datetime, timedelta
 from typing import TYPE_CHECKING
 
-from PySide6.QtWidgets import QFrame, QGridLayout, QHBoxLayout, QPushButton, QVBoxLayout, QWidget
+from PySide6.QtWidgets import (QFrame, QGridLayout, QHBoxLayout, QPushButton,
+                               QVBoxLayout, QWidget)
 
 from core import classifier
 from core import config as config_mod
@@ -25,14 +26,16 @@ class StatsPage(QWidget):
         self._data: list[tuple[str, int, int, int]] = []
 
         outer = widgets.page_shell(self)
-        outer.setSpacing(theme.GRID * 2)
 
         header = QHBoxLayout()
+        header.setContentsMargins(0, 0, 0, 0)
+        header.setSpacing(theme.GAP_CONTROL)
         title_col = QVBoxLayout()
-        title_col.setSpacing(2)
+        title_col.setContentsMargins(0, 0, 0, 0)
+        title_col.setSpacing(theme.GAP_RELATED)
         title_col.addWidget(widgets.page_title("统计"))
-        # 用会换行的 caption 会在这儿折成两行：它在 QHBoxLayout 里只拿得到自己的
-        # sizeHint 那么宽，哪怕右边还空着一大片
+        # 用会换行的标签会在这儿折成两行：它在 QHBoxLayout 里只拿得到自己的
+        # sizeHint 那么宽，哪怕右边还空着一大片。
         self.range_label = widgets.ElidedLabel("—")
         title_col.addWidget(self.range_label)
         header.addLayout(title_col, 1)
@@ -40,9 +43,12 @@ class StatsPage(QWidget):
         refresh.clicked.connect(self.refresh)
         header.addWidget(refresh)
         outer.addLayout(header)
+        outer.addSpacing(theme.GAP_SECTION)
 
+        # 四个并排的汇总指标：尺寸一致、可横向对比，属于倾向使用 Card 的场景
         tiles = QGridLayout()
-        tiles.setSpacing(theme.GRID * 1.5)
+        tiles.setContentsMargins(0, 0, 0, 0)
+        tiles.setSpacing(theme.GAP_GROUP)
         self.today = StatTile("今天")
         self.week = StatTile("近 7 天")
         self.total = StatTile("累计")
@@ -51,15 +57,17 @@ class StatsPage(QWidget):
             tiles.addWidget(tile, 0, col)
             tiles.setColumnStretch(col, 1)
         outer.addLayout(tiles)
+        outer.addSpacing(theme.GAP_SECTION)
 
-        chart_card = QFrame()
-        chart_card.setObjectName("Card")
-        chart_box = QVBoxLayout(chart_card)
-        chart_box.setContentsMargins(theme.GRID * 2, theme.GRID * 2,
-                                     theme.GRID * 2, theme.GRID * 2)
+        # 曲线区有自己的坐标系，是一块内嵌的绘图区 → Sunken，不是 Card
+        chart_panel = QFrame()
+        chart_panel.setObjectName("Sunken")
+        chart_box = QVBoxLayout(chart_panel)
+        chart_box.setContentsMargins(theme.PADDING_CONTAINER, theme.PADDING_CONTAINER,
+                                     theme.PADDING_CONTAINER, theme.PADDING_CONTAINER)
         self.chart = DailyChart()
         chart_box.addWidget(self.chart)
-        outer.addWidget(chart_card, 1)
+        outer.addWidget(chart_panel, 1)
 
     def refresh(self) -> None:
         cfg = config_mod.load_cached()
@@ -82,11 +90,15 @@ class StatsPage(QWidget):
             self.best.set_value(0)
             self.best.set_caption("最高一天")
 
+        stamp = f"更新于 {now:%H:%M:%S}"
         if self._data:
             self.range_label.setText(
-                f"统计区间 {self._data[0][0]} ~ {self._data[-1][0]}    ·    "
-                f"更新于 {now:%H:%M:%S}")
+                f"{self._data[0][0]} 至 {self._data[-1][0]} · {stamp}")
         else:
-            self.range_label.setText(f"暂无数据    ·    更新于 {now:%H:%M:%S}")
+            self.range_label.setText(f"还没有记录 · {stamp}")
 
         self.chart.set_data(self._data)
+
+    def retheme(self) -> None:
+        """切换深浅之后重画曲线：线色、网格和图例都是自绘的。"""
+        self.chart.update()

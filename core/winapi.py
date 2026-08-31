@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""用到的那点 Win32：进程、优先级、窗口、抓帧、单实例、深色标题栏、Mica。
+"""用到的那点 Win32：进程、优先级、窗口、抓帧、单实例、标题栏、Mica、系统外观。
 
 全走 ctypes，不引 pywin32 / psutil / mss——这个程序要打成安装包分发，
 少一个二进制依赖就少一类「装上跑不起来」。
@@ -14,6 +14,11 @@ from __future__ import annotations
 import ctypes
 import sys
 from ctypes import wintypes
+
+try:                                    # 只有 Windows 有
+    import winreg
+except ImportError:
+    winreg = None                       # type: ignore[assignment]
 
 _IS_WINDOWS = sys.platform == "win32"
 
@@ -48,6 +53,8 @@ DWMSBT_MAINWINDOW = 2
 _BUILD_BACKDROP = 22621
 #: Windows 11 的起始内部版本号
 _BUILD_WIN11 = 22000
+#: SystemParametersInfo 的 SPI_GETCLIENTAREAANIMATION，「减少动态效果」的取反
+SPI_GETCLIENTAREAANIMATION = 0x1042
 
 
 class PROCESSENTRY32W(ctypes.Structure):
@@ -139,6 +146,9 @@ def _declare() -> None:
     u.GetDC.restype = wintypes.HDC
     u.ReleaseDC.argtypes = [wintypes.HWND, wintypes.HDC]
     u.ReleaseDC.restype = ctypes.c_int
+    u.SystemParametersInfoW.argtypes = [wintypes.UINT, wintypes.UINT,
+                                        ctypes.c_void_p, wintypes.UINT]
+    u.SystemParametersInfoW.restype = wintypes.BOOL
 
     g.CreateCompatibleDC.argtypes = [wintypes.HDC]
     g.CreateCompatibleDC.restype = wintypes.HDC
@@ -281,20 +291,71 @@ def set_app_user_model_id(app_id: str) -> None:
         pass
 
 
-def enable_dark_titlebar(hwnd: int) -> None:
-    """把窗口标题栏刷成深色，不跟随系统的浅色设置。"""
+def set_titlebar_dark(hwnd: int, dark: bool) -> None:
+    """标题栏跟着应用主题走。
+
+    以前这里写死开深色。加了浅色主题之后再写死，就会出现深色标题栏配浅色
+    客户区——非客户区归 DWM 管，Qt 的样式表刷不到那一条。
+    """
     if not _IS_WINDOWS or not hwnd:
         return
     try:
         dwmapi = ctypes.WinDLL("dwmapi")
         dwmapi.DwmSetWindowAttribute.argtypes = [
             wintypes.HWND, wintypes.DWORD, ctypes.c_void_p, wintypes.DWORD]
-        on = ctypes.c_int(1)
+        value = ctypes.c_int(1 if dark else 0)
         dwmapi.DwmSetWindowAttribute(
             wintypes.HWND(hwnd), DWMWA_USE_IMMERSIVE_DARK_MODE,
-            ctypes.byref(on), ctypes.sizeof(on))
+            ctypes.byref(value), ctypes.sizeof(value))
     except (OSError, AttributeError):
         pass
+
+
+def apps_use_light_theme() -> bool | None:
+    """系统的应用主题是不是浅色。读不到返回 ``None``。
+
+    Qt 6.5 起 ``QStyleHints.colorScheme()`` 通常够用，这条只是兜底。
+    """
+    if not _IS_WINDOWS or winreg is None:
+        return None
+    try:
+        with winreg.OpenKey(
+                winreg.HKEY_CURRENT_USER,
+                r"Software\Microsoft\Windows\CurrentVersion\Themes\Personalize") as key:
+            return bool(winreg.QueryValueEx(key, "AppsUseLightTheme")[0])
+    except (OSError, ValueError):
+        return None
+
+
+def text_scale_factor() -> float:
+    """辅助功能里「放大文本」的倍数（1.0 ~ 2.25）。没设置过就是 1.0。
+
+    这个设置**独立于**显示缩放：Qt 会处理显示缩放，但不碰它，所以字号要由
+    我们自己乘一次。从没调过的机器上根本没有这个键，不是错误。
+    """
+    if not _IS_WINDOWS or winreg is None:
+        return 1.0
+    try:
+        with winreg.OpenKey(winreg.HKEY_CURRENT_USER,
+                            r"Software\Microsoft\Accessibility") as key:
+            percent = int(winreg.QueryValueEx(key, "TextScaleFactor")[0])
+    except (OSError, ValueError, TypeError):
+        return 1.0
+    return min(2.25, max(1.0, percent / 100.0))
+
+
+def animations_enabled() -> bool:
+    """系统是否允许动画。关掉「动画效果」＝要求减少动态效果。"""
+    if not _IS_WINDOWS:
+        return True
+    try:
+        enabled = wintypes.BOOL()
+        if user32.SystemParametersInfoW(SPI_GETCLIENTAREAANIMATION, 0,
+                                        ctypes.byref(enabled), 0):
+            return bool(enabled.value)
+    except (OSError, AttributeError):
+        pass
+    return True
 
 
 def windows_build() -> int:

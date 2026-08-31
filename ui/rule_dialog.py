@@ -35,16 +35,17 @@ class RuleDialog(QDialog):
         self._cfg = cfg
         self._existing = existing_keys
         self.setWindowTitle("添加判定规则")
-        self.setMinimumWidth(420)
+        self.setMinimumWidth(460)
 
         outer = QVBoxLayout(self)
-        outer.setContentsMargins(theme.GRID * 3, theme.GRID * 3, theme.GRID * 3, theme.GRID * 3)
-        outer.setSpacing(theme.GRID * 2)
+        outer.setContentsMargins(theme.PADDING_PAGE_X, theme.PADDING_PAGE_Y,
+                                 theme.PADDING_PAGE_X, theme.PADDING_PAGE_Y)
+        outer.setSpacing(theme.GAP_GROUP)
 
         form = QFormLayout()
         form.setLabelAlignment(Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter)
-        form.setHorizontalSpacing(theme.GRID * 2)
-        form.setVerticalSpacing(theme.GRID * 1.5)
+        form.setHorizontalSpacing(theme.GAP_GROUP)
+        form.setVerticalSpacing(theme.GAP_CONTROL)
 
         self.name_box = QLineEdit()
         self.name_box.setPlaceholderText("例如：SSS寸")
@@ -99,9 +100,12 @@ class RuleDialog(QDialog):
         self._form = form
         outer.addLayout(form)
 
-        outer.addWidget(widgets.caption("留空的输出文件夹＝「寸/名称」。命中的截图会被复制到那里，原图不动。"))
+        outer.addWidget(widgets.note(
+            "留空的输出文件夹等于「寸/名称」。命中的截图会被复制到那里，原图不动。"))
 
         buttons = QHBoxLayout()
+        buttons.setContentsMargins(0, 0, 0, 0)
+        buttons.setSpacing(theme.GAP_CONTROL)
         buttons.addStretch(1)
         cancel = QPushButton("取消")
         cancel.clicked.connect(self.reject)
@@ -112,6 +116,9 @@ class RuleDialog(QDialog):
         buttons.addWidget(cancel)
         buttons.addWidget(add)
         outer.addLayout(buttons)
+
+        # 对话框是独立的顶层窗口，焦点环要自己装一个
+        self._focus_ring = widgets.FocusRing(self)
 
         self._last_suggest = ""
         self.kind_box.currentIndexChanged.connect(self._refresh)

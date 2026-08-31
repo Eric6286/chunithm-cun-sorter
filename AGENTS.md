@@ -12,6 +12,9 @@ Codex 在本仓库（寸录 / chunithm-cun-sorter）工作时的约定与速查�
   安装包文件名、控制面板里的卸载项；`APP_NAME` 供窗口标题、托盘、exe 文件名、快捷方式、
   自启注册表值名。别在别处再写一份。
 - 发版时一并更新 README 里的版本号与安装包文件名。
+- **界面改动先读 `~\.claude\DESIGN.md`**。本项目遵循的规范版本记在
+  `ui/theme/tokens.py` 的 `DESIGN_SYSTEM_REVISION`，当前是 `2026.08.31-a11y-baseline`。
+  项目覆盖全局默认的地方全部登记在同文件的 `OVERRIDES` 里，加覆盖要连原因一起写。
 
 ## 这是什么
 
@@ -32,7 +35,11 @@ ui/main_window.py  主窗口：导航 + 三页 + 托盘 + 服务生命周期
    ↓ 用
 ui/page_config.py / page_stats.py / page_run.py / first_run.py / rule_dialog.py
    ↓ 都用
-ui/theme.py        配色 / 字号 / 样式表        ui/widgets.py  开关、卡片、曲线、浮条
+ui/theme/          主题入口，下分四个模块       ui/widgets.py  焦点环、开关、分段、卡片、曲线、浮条
+   ├ tokens.py     固化色板（Light / Dark 两套，纯数据、不依赖 Qt）
+   ├ metrics.py    字号 / 间距 / 圆角 / 动效 / 阴影 / 材质，全是单值
+   ├ qss.py        语义 Token → QSS，唯一拼样式表的地方
+   └ __init__.py   门面：当前模式、取色、取字体、接系统设置
    ↓
 core/classifier.py 判定 / 复制 / 整理 / 扫描 / 缓存 / 统计   ←── 两个前端共用
    ↓ 用
@@ -72,9 +79,13 @@ core/winapi.py     ctypes 封装：进程 / 窗口 / 抓帧 / 单实例 / DPI
    生产环境就是这么截错的。→ `test_the_chrome_alone_is_not_enough_to_be_a_result_screen`
 6. **内存读取只读。** `ReadProcessMemory` / `VirtualQueryEx`，不写、不注入、不 hook。
 7. **后台线程的回调一律通过 Qt 信号回界面线程。** 直接从工作线程碰部件是未定义行为。
-8. **字号一律按像素给**（`setPixelSize` / QSS 的 `px`）。`ui/theme.py` 那张 HIG 字体样式表
-   （13 / 11 / 10 / 22）是**像素**值——macOS 上 1pt 就是 1px，Qt 在 Windows 上按 96 DPI 换算，
-   写 `pt` 会让 13 变成 17，整屏字大三分之一、行还会被挤塌（v2.0 就是这样）。
+8. **字号一律按像素给**（`setPixelSize` / QSS 的 `px`）。`ui/theme/metrics.py` 的九个
+   排版角色是**逻辑像素**——Qt 6 的高 DPI 缩放会按显示缩放自己放大，这正是规范说的
+   「默认系统缩放下的逻辑尺寸」。写 `pt` 会让 Qt 在 Windows 上按 96 DPI 换算，13 变成 17，
+   整屏字大三分之一、行还会被挤塌（v2.0 就是这样）。
+   Windows 辅助功能里的「放大文本」是**另一个**设置，Qt 不管，`theme.font()` 自己乘一次
+   ——规范要求系统字体缩放只应用一次，那就是唯一那一次，别在别处再乘。
+   组标题必须比行标题大且 Semibold（14 / `text.primary`），规范点名禁止做成 caption 或弱灰。
 9. **Mica 是两步，少一步等于没开。** `DwmSetWindowAttribute(DWMWA_SYSTEMBACKDROP_TYPE)`
    之后必须再调 `DwmExtendFrameIntoClientArea` 传四边 `-1`，否则材质只铺在标题栏那一条，
    客户区毫无变化——而属性回读还是成功的（`hr=S_OK, value=2`），光看返回值查不出来。
@@ -84,6 +95,24 @@ core/winapi.py     ctypes 封装：进程 / 窗口 / 抓帧 / 单实例 / DPI
    `transparent`，其余各层半透明。两条连带的约束：`WA_TranslucentBackground` 必须在 `show()`
    **之前**设，之后设不生效；而材质一旦没铺上（`enable_mica` 返回 False），底色必须换回不透明
    那套，否则是一片全黑——`_after_shown` 里有这条回退，别删。
+   ⚠️ **但那条回退只在底色画在 `QWidget#AppRoot` 上时才真的有效。**
+   窗口一旦设过 `WA_TranslucentBackground`，`QMainWindow` 自己的 QSS 背景就**不画了**
+   （实测：同一份样式表，非透明窗口取到 `#120F0C`，透明窗口取到 alpha=0），
+   而那个属性 `show()` 之后撤不掉。所以画布底色画在中央容器上，不靠 `QMainWindow`。
+   Mica 的色调**跟随窗口自己的深浅属性**，不是系统的——已实测：系统深色、应用强制浅色时
+   材质也是浅的，所以不需要「两者不一致就关材质」的回退。
+
+10. **Light 与 Dark 的 Token 键集合必须完全一致，对比度按「文字承载面集合」逐一校验。**
+    少一个键就是那个模式下 KeyError，或者更糟——QSS 里静默变成空串，界面塌了却不报错。
+    承载面有十一个（四个 Surface + `fill.control` + `accent.subtle` + 四个语义 `subtle`），
+    只对 `canvas` 校一次会放过一批实际读不清的组合：候选色板的 `text.tertiary` 对 canvas
+    有 4.45:1，对 `fill.control` 就不够。→ 测试
+    `test_light_and_dark_define_exactly_the_same_tokens`、
+    `test_neutral_text_is_readable_on_every_text_bearing_surface`
+
+11. **业务代码不许散写 Hex、字号、间距、圆角、阴影和动画时长。** 全部走 `ui/theme`。
+    自绘控件（Switch、Segmented、Combo 的箭头、DailyChart）尤其容易漏——v2.0 的
+    `DailyChart` 就写死了 `QColor(235, 235, 245, 77)` 这种只在深色下成立的值。
 
 ## 会浪费半小时的坑
 
@@ -106,6 +135,17 @@ core/winapi.py     ctypes 封装：进程 / 窗口 / 抓帧 / 单实例 / DPI
   那是平台的事，不是代码的问题，别去追。
 - **`_ocr()` 不负责关 PIL 图像**：第二行可能要换个 psm 再喂一次，提前关掉就 `ValueError:
   Operation on closed image`。生命周期由 `detect()` 管。
+- **QSS 不支持 `outline` / `outline-offset`。** 属性被静默忽略，一个像素都不画（实测）。
+  焦点环由 `ui/widgets.py` 的 `FocusRing` 画：一个跟随焦点的覆盖层，`setParent` 到获得焦点
+  那个控件的父级，于是被同样的祖先裁剪，滚出可视区会跟着消失。别在 QSS 里加 `:focus` 边框
+  「补救」——那会让控件获得焦点时跳一下，还和环叠在一起。测试钉着这条。
+- **QSS 也不认 `line-height`，但 Qt 的富文本引擎认。** 会换行的标签（组级说明）用
+  `theme.rich_text()` 包一层 `<div style="line-height:…">`，实测 200px 宽的标签从 26 高
+  变成 56 高。包之前必须转义，路径里的 `&` 不转义会被当成 HTML 实体吃掉。
+- **`QButtonGroup.idClicked` 只在用户点击时发，程序化 `setChecked` 不发。**
+  `Segmented` 靠这个区分「用户改的」和「重建界面时置的」，自动保存不会被构建过程触发。
+  但 `Switch.toggled` **会**被程序化置位触发，所以 `ConfigPage` 有个 `_loading` 闸，
+  `RunPage` 有个 `_initializing` 闸。
 - **别在仓库根放 `cun_config.json`。** 源码运行时 `portable_dir()` 会往上找到它，
   整个程序误判成便携部署，截图目录被推到仓库旁边去。`_fill_paths` 里有一道守卫，别拿掉。
 - **`installer.iss` 必须存成 UTF-8 with BOM**，否则 ISCC 按 ANSI 读，中文全是乱码。

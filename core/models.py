@@ -278,6 +278,9 @@ class CunConfig:
     #: 已接入自启动行的 start.bat 路径（空＝从没配过）。
     #: 当前是否真的接入以 bat 文件内容为准，两者不会各说各话。
     start_bat: str = ""
+    #: 界面外观：``system`` 跟随系统 / ``light`` 浅色 / ``dark`` 深色。
+    #: 老配置没有这个键，读出来就是默认的跟随系统。
+    appearance: str = "system"
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -302,6 +305,7 @@ class CunConfig:
             "dghub": self.dghub.to_dict(),
             "capture": self.capture.to_dict(),
             "start_bat": self.start_bat,
+            "appearance": self.appearance,
         }
 
     @classmethod
@@ -344,6 +348,8 @@ class CunConfig:
         cfg.dghub = DgHubConfig.from_dict(d.get("dghub"))
         cfg.capture = CaptureConfig.from_dict(d.get("capture"))
         cfg.start_bat = _str(d.get("start_bat"), cfg.start_bat)
+        appearance = _str(d.get("appearance"), cfg.appearance)
+        cfg.appearance = appearance if appearance in ("system", "light", "dark") else "system"
         return cfg
 
 

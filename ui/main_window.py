@@ -41,12 +41,12 @@ _FREEZE_TRIGGER_SEC = 2.5
 _MIN_NOTES = 10
 #: 侧栏宽度与每一项的行高
 _SIDEBAR_WIDTH = 152
-_NAV_ROW_HEIGHT = 30
+_NAV_ROW_HEIGHT = 32
 
 
 class MainWindow(QMainWindow):
     # 工作线程 → 界面线程
-    sig_toast = Signal(str, str, str, int)
+    sig_toast = Signal(str, str, str, int, object)
     sig_log = Signal(str)
     sig_watch_text = Signal(str)
     sig_link_text = Signal(str)
@@ -97,7 +97,8 @@ class MainWindow(QMainWindow):
     # ----------------------------- 组装 -------------------------------------
     def _build_ui(self) -> None:
         central = QWidget()
-        central.setObjectName("PageBody")
+        # 画布底色画在这里，不靠 QMainWindow——见 ui/theme/qss.py 里那条注释
+        central.setObjectName("AppRoot")
         row = QHBoxLayout(central)
         row.setContentsMargins(0, 0, 0, 0)
         row.setSpacing(0)
@@ -106,7 +107,7 @@ class MainWindow(QMainWindow):
         sidebar.setObjectName("Sidebar")
         sidebar.setFixedWidth(_SIDEBAR_WIDTH)
         side_box = QVBoxLayout(sidebar)
-        side_box.setContentsMargins(0, theme.GRID * 2, 0, theme.GRID * 2)
+        side_box.setContentsMargins(0, theme.GAP_GROUP, 0, theme.GAP_GROUP)
         side_box.setSpacing(0)
 
         self.nav = QListWidget()
@@ -135,6 +136,8 @@ class MainWindow(QMainWindow):
 
         self.setCentralWidget(central)
         self.toast = Toast(central)
+        # 键盘焦点的可见指示。一个窗口一个，覆盖窗口里所有控件。
+        self._focus_ring = widgets.FocusRing(self)
 
     def _fit_to_screen(self) -> None:
         """默认尺寸按可用屏幕收一收，然后居中。
@@ -182,17 +185,38 @@ class MainWindow(QMainWindow):
         return tray
 
     def _after_shown(self) -> None:
-        """窗口摆出来之后再做的事：深色标题栏、Mica、首次运行向导、联动开关。"""
+        """窗口摆出来之后再做的事：标题栏、Mica、首次运行向导、联动开关。"""
         hwnd = int(self.winId())
-        winapi.enable_dark_titlebar(hwnd)
+        app = QApplication.instance()
+        # 标题栏归 DWM 管，Qt 的样式表刷不到那一条，得单独跟着主题走
+        winapi.set_titlebar_dark(hwnd, theme.is_dark())
         if self._mica and not winapi.enable_mica(hwnd):
             # 材质没铺上，而底色已经按「透得过去」配好了——再不换回来就是一片全黑
             self._mica = False
-            app = QApplication.instance()
             if app is not None:
                 app.setStyleSheet(theme.stylesheet(mica=False))
+        if app is not None:
+            app.styleHints().colorSchemeChanged.connect(self._system_scheme_changed)
         self._ensure_game_root()
         self.apply_dghub_link()
+
+    # ----------------------------- 主题 -------------------------------------
+    def _system_scheme_changed(self, _scheme) -> None:
+        """系统切了深浅。只有「跟随系统」时才跟着动。"""
+        if theme.follows_system():
+            self.apply_appearance()
+
+    def apply_appearance(self) -> None:
+        """按配置里的 appearance 重新定模式，并把整套外观刷一遍。"""
+        theme.set_appearance(self.cfg.appearance)
+        app = QApplication.instance()
+        if app is not None:
+            theme.apply(app, mica=self._mica)
+        winapi.set_titlebar_dark(int(self.winId()), theme.is_dark())
+        # 自绘的部件和用代码设过的字体不吃样式表，得自己再取一遍
+        theme.apply_shadow(self.toast)
+        self.stats_page.retheme()
+        self.run_page.retheme()
 
     def _ensure_game_root(self) -> None:
         """还不知道截图目录在哪就弹一次向导。"""
@@ -202,7 +226,7 @@ class MainWindow(QMainWindow):
         if root is None:
             self.show_toast("还没设置游戏目录",
                             "去「配置 → 目录」里选一下，不然没有截图可以扫。",
-                            Toast.WARNING, 6000)
+                            Toast.WARNING)
             return
         config_mod.apply_game_root(self.cfg, root)
         config_mod.save(self.cfg)
@@ -278,14 +302,29 @@ class MainWindow(QMainWindow):
         return path
 
     # ----------------------------- 提示 -------------------------------------
-    def show_toast(self, title: str, message: str,
-                   severity: str = Toast.INFO, duration_ms: int = 3000) -> None:
-        self.sig_toast.emit(title, message, severity, duration_ms)
+    def show_toast(self, title: str, message: str, severity: str = Toast.INFO,
+                   duration_ms: int = 0, action: tuple[str, object] | None = None) -> None:
+        """线程安全：后台线程也能调，走信号回界面线程。
 
-    def _show_toast_now(self, title: str, message: str, severity: str, duration_ms: int) -> None:
-        self.toast.show_toast(title, message, severity, duration_ms)
+        ``duration_ms`` 留 0 就用 Toast 的默认时长；错误和带动作的提示不自动消失。
+        """
+        self.sig_toast.emit(title, message, severity, duration_ms, action)
+
+    def _show_toast_now(self, title: str, message: str, severity: str,
+                        duration_ms: int, action) -> None:
+        self.toast.show_toast(title, message, severity, duration_ms or None, action)
 
     # ----------------------------- 配置 -------------------------------------
+    def save_instant_settings(self) -> None:
+        """开关、单选和选择器改完立刻落盘。
+
+        **只收即时字段**：目录、端口、秒数和得分区间属于要明确提交的输入，
+        不能被一次开关切换顺手写进去。
+        """
+        self.config_page.read_instant_into(self.cfg)
+        config_mod.save(self.cfg)
+        self.apply_dghub_link()
+
     def save_config_from_ui(self) -> None:
         self.config_page.read_into(self.cfg)
         config_mod.save(self.cfg)
@@ -295,7 +334,11 @@ class MainWindow(QMainWindow):
 
     def apply_and_rescan(self) -> None:
         self.save_config_from_ui()
-        self.show_toast("正在重新扫描…", "按当前规则重建输出文件夹（不阻塞界面）", Toast.INFO)
+        # 全量扫描远超 2 秒，按钮要进 Loading 并给文字状态：
+        # 不然连点会起好几个扫描线程去抢同一批文件。
+        self.config_page.set_scanning(True)
+        self.show_toast("正在重新扫描", "按当前规则重建输出文件夹，可以继续用其他页面",
+                        Toast.INFO)
 
         def work() -> None:
             try:
@@ -307,13 +350,14 @@ class MainWindow(QMainWindow):
         threading.Thread(target=work, name="cun-scan", daemon=True).start()
 
     def _on_scan_done(self, result: ScanResult) -> None:
+        self.config_page.set_scanning(False)
         self.stats_page.refresh()
         if result.error:
-            self.show_toast("扫描出错", result.error, Toast.ERROR, 6000)
+            self.show_toast("扫描出错", result.error, Toast.ERROR)
         else:
             self.show_toast("扫描完成",
-                            f"寸 {result.cun}    AJ {result.aj}    共 {result.total} 张",
-                            Toast.SUCCESS, 4000)
+                            f"寸 {result.cun} 张 · AJ {result.aj} 张 · 共 {result.total} 张",
+                            Toast.SUCCESS)
 
     def open_output(self) -> None:
         directory = self.cfg.output_root
@@ -344,7 +388,7 @@ class MainWindow(QMainWindow):
             return
 
         if not self.cfg.screenshots_dir:
-            self.show_toast("还没设置截图目录", "去「配置 → 目录」里选一下。", Toast.WARNING, 5000)
+            self.show_toast("还没设置截图目录", "去「配置 → 目录」里选一下。", Toast.WARNING)
             return
 
         self._watcher = Watcher(

@@ -36,15 +36,18 @@ def main(argv: list[str] | None = None) -> int:
 
     from PySide6.QtWidgets import QApplication
 
+    from core import config as config_mod
     from ui import theme
     from ui.main_window import MainWindow
 
     app = QApplication(sys.argv)
     app.setApplicationName("chunithm-cun-sorter")
     app.setQuitOnLastWindowClosed(False)            # 关窗口＝缩托盘，别退出进程
-    app.setFont(theme.ui_font())
-    # 样式表要在建窗口之前就定下来，不然第一帧会闪一下不同的底色
-    app.setStyleSheet(theme.stylesheet(mica=winapi.supports_mica()))
+
+    # 深浅模式要在建窗口之前定下来，不然第一帧会闪一下另一套底色。
+    # 跟随系统时读 Qt 的 colorScheme()，所以必须在 QApplication 之后。
+    theme.set_appearance(config_mod.load_cached().appearance)
+    theme.apply(app, mica=winapi.supports_mica())
 
     window = MainWindow()
     window.show()
