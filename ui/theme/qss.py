@@ -354,18 +354,18 @@ QListWidget#NavList {{
 QListWidget#NavList::item {{
     color: {t["text.secondary"]};
     border-radius: {m.RADIUS_SMALL}px;
-    border-left: 3px solid transparent;
-    padding: 0 {m.GAP_INLINE}px;
+    padding: 0 {m.PADDING_CONTROL_X}px;
     margin: 1px {m.GAP_INLINE}px;
 }}
 QListWidget#NavList::item:hover {{
     background: {t["fill.hover"]};
     color: {t["text.primary"]};
 }}
+/* 选中态只染色，不加左侧指示条：填充 + 文字色 + 位置已经够认，
+   再挂一条竖杠就是多一层视觉重量。 */
 QListWidget#NavList::item:selected {{
     background: {t["accent.subtle"]};
     color: {t["accent.text"]};
-    border-left: 3px solid {t["accent.primary"]};
 }}
 
 /* ===== 浮层 ===== */
