@@ -46,7 +46,10 @@ ArchitecturesAllowed=x64compatible
 ArchitecturesInstallIn64BitMode=x64compatible
 
 OutputDir=..\dist_installer
-OutputBaseFilename={#AppFileBase}-{#AppVersion}-安装程序
+; ⚠️ 文件名必须全 ASCII。GitHub Release 上传时会把非 ASCII 从资产名里剥掉，
+; 「-安装程序.exe」变成「-.exe」，README 让人下的那个名字在页面上根本不存在。
+; v1.x 用的是 _win64.zip 所以没碰到，v2.1.0 是第一次真发出去才暴露。
+OutputBaseFilename={#AppFileBase}-{#AppVersion}-setup
 SetupIconFile=..\assets\icon.ico
 UninstallDisplayIcon={app}\{#AppExeName}
 UninstallDisplayName={#AppName} {#AppVersion}
